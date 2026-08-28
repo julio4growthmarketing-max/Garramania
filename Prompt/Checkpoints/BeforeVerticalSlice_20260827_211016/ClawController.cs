@@ -1,0 +1,836 @@
+using UnityEngine;
+
+public class ClawController : MonoBehaviour
+{
+    private float LIM_X = 1.3f;
+    private float LIM_Z = 1.3f;
+    private float LIM_YMAX = 2.78f;
+    private float LIM_YMIN = -0.95f;
+
+    // Juice: throttle para som do servo não spammar
+    private float servoSoundTimer = 0f;
+    private const float SERVO_SOUND_COOLDOWN = 0.2f;
+
+    private bool isClosed = false;
+    private Transform[] dentes;
+    private GameObject premioAgarrado;
+    private LineRenderer cable;
+    private TrailRenderer trailRenderer;
+
+    [Header("Eventos")]
+    public UnityEngine.Events.UnityEvent<bool> OnClawStateChanged = new UnityEngine.Events.UnityEvent<bool>();
+    public UnityEngine.Events.UnityEvent<bool> OnGrabAttempt = new UnityEngine.Events.UnityEvent<bool>();
+    public bool IsClosed => isClosed;
+    public bool HasPrize => premioAgarrado != null;
+
+    [Header("Força da Garra")]
+    [Range(0.1f, 1.0f)]
+    [SerializeField] private float clawForce = 1.0f;
+    public float ClawForce => clawForce;
+
+    public void SetForce(float force)
+    {
+        clawForce = Mathf.Clamp(force, 0.1f, 1.0f);
+        Debug.Log($"[ClawController] Força da garra ajustada para: {clawForce:P0}");
+    }
+
+    [Header("Arraste o Urso (Prefab) para cá no Inspector (Opcional):")]
+    public GameObject prizePrefab;
+
+    private Transform prizePileRoot;
+    private PrizeStockManager stockManager;
+    private PrizePileSpawner pileSpawner;
+    private bool prizeBoardBuilt;
+
+    // Capacidade visual de uma máquina de shopping. O volume fica distribuído em
+    // quatro camadas para parecer um monte, não uma estante de personagens.
+    private const int INITIAL_BOARD_COUNT = 72;
+    private const float PRIZE_FLOOR_Y = -1.325f;
+    private const float PRIZE_AREA_HALF_EXTENT = 1.38f;
+
+    void Start()
+    {
+        stockManager = PrizeStockManager.Instance;
+
+        try
+        {
+            ConstruirGabinete();
+        }
+        catch (System.Exception ex)
+        {
+            Debug.LogError("[ClawController] Falha no gabinete visual. O gameplay continuará com o fallback: " + ex);
+        }
+
+        try
+        {
+            ConstruirGarra();
+        }
+        catch (System.Exception ex)
+        {
+            Debug.LogError("[ClawController] Falha na garra visual: " + ex);
+        }
+        
+        cable = gameObject.AddComponent<LineRenderer>();
+        cable.startWidth = 0.05f;
+        cable.endWidth = 0.05f;
+        cable.material = new Material(Shader.Find("Universal Render Pipeline/Lit"));
+        cable.material.color = Color.black;
+        cable.positionCount = 2;
+
+        ConfigurarRastroLuminoso();
+
+                // A UI é inicializada pelo bootstrap da sessão.
+        // O controlador da garra não deve destruir nem criar sistemas de apresentação.
+
+    }
+
+    private void OnDestroy()
+    {
+        // O PrizePileSpawner possui a própria inscrição no evento de reposição.
+        // O controlador da garra não deve construir nem repor prêmios.
+    }
+
+    private bool isExecutingCycle = false;
+    public bool IsExecutingCycle => isExecutingCycle;
+
+    void Update()
+    {
+        AtualizarCabo();
+
+        // Se a garra está no ciclo de descida/captura/retorno à calha, bloqueia comandos manuais
+        if (isExecutingCycle) return;
+        if (GameSession.Instance != null && !GameSession.Instance.CanMoveClaw()) return;
+
+        // Servo sound throttle
+        if (servoSoundTimer > 0f) servoSoundTimer -= Time.deltaTime;
+
+        Vector3 moveInput = Vector3.zero;
+        bool space = false;
+
+        // Lê Roteador (Celular / Teclado)
+        if (InputRouter.Instance != null)
+        {
+            moveInput = InputRouter.Instance.Movement;
+            space = InputRouter.Instance.ActionTriggered;
+        }
+
+        Vector3 nova = transform.position + moveInput * 3.0f * Time.deltaTime;
+        nova.x = Mathf.Clamp(nova.x, -LIM_X, LIM_X);
+        nova.z = Mathf.Clamp(nova.z, -LIM_Z, LIM_Z);
+        nova.y = Mathf.Clamp(nova.y, LIM_YMIN, LIM_YMAX);
+        transform.position = nova;
+
+        // 🔊 JUICE: Som do servo ao mover
+        if (moveInput.sqrMagnitude > 0.01f && servoSoundTimer <= 0f)
+        {
+            AudioFeedbackController.Instance?.PlayServo();
+            servoSoundTimer = SERVO_SOUND_COOLDOWN;
+        }
+
+        if (space) AcionarGarra();
+    }
+
+    /// <summary>
+    /// Inicia o ciclo real de fliperama:
+    /// Desce -> Agarra com física -> Sobe ao teto -> Viaja até a calha -> Solta o prêmio no duto -> Retorna ao centro.
+    /// </summary>
+    public void AcionarGarra()
+    {
+        if (isExecutingCycle) return;
+        if (GameSession.Instance != null && !GameSession.Instance.CanMoveClaw()) return;
+
+        PrizeStockManager.Instance.RegisterAttemptStarted();
+        StartCoroutine(RotinaCicloFliperama());
+    }
+
+    private System.Collections.IEnumerator RotinaCicloFliperama()
+    {
+        isExecutingCycle = true;
+        GameSession.Instance?.SetState(GameState.Capturing);
+        OnClawStateChanged?.Invoke(true);
+
+        // 1. FASE DE DESCIDA SUAVE EM DIREÇÃO ÀS PELÚCIAS
+        float targetY = LIM_YMIN;
+        while (transform.position.y > targetY + 0.04f)
+        {
+            transform.position = Vector3.MoveTowards(transform.position, 
+                new Vector3(transform.position.x, targetY, transform.position.z), 
+                2.2f * Time.deltaTime);
+
+            AtualizarCabo();
+
+            // Se tocar numa pelúcia pelo caminho, interrompe a descida
+            Collider[] hitsDescida = Physics.OverlapSphere(transform.position, 0.40f);
+            bool tocouPelucia = false;
+            foreach (var h in hitsDescida)
+            {
+                if (h.GetComponentInParent<Prize>() != null)
+                {
+                    tocouPelucia = true;
+                    break;
+                }
+            }
+            if (tocouPelucia) break;
+
+            yield return null;
+        }
+
+        yield return new WaitForSeconds(0.2f);
+
+        // 2. FASE DE FECHAMENTO & AGARRE MECÂNICO
+        FecharGarraFisica();
+        yield return new WaitForSeconds(0.5f);
+
+        // 3. FASE DE SUBIDA DE VOLTA AO TETO
+        GameSession.Instance?.SetState(GameState.Returning);
+        while (transform.position.y < LIM_YMAX - 0.04f)
+        {
+            transform.position = Vector3.MoveTowards(transform.position, 
+                new Vector3(transform.position.x, LIM_YMAX, transform.position.z), 
+                2.0f * Time.deltaTime);
+
+            AtualizarCabo();
+            yield return null;
+        }
+
+        yield return new WaitForSeconds(0.3f);
+
+        // 4. FASE DE VIAGEM AUTOMÁTICA ATÉ A CALHA DE PRÊMIOS (-1.8, LIM_YMAX, -1.8)
+        Vector3 posCalha = new Vector3(-1.8f, LIM_YMAX, -1.8f);
+        while (Vector3.Distance(new Vector3(transform.position.x, 0, transform.position.z), 
+                              new Vector3(posCalha.x, 0, posCalha.z)) > 0.05f)
+        {
+            transform.position = Vector3.MoveTowards(transform.position, 
+                new Vector3(posCalha.x, LIM_YMAX, posCalha.z), 
+                2.4f * Time.deltaTime);
+
+            AtualizarCabo();
+            yield return null;
+        }
+
+        yield return new WaitForSeconds(0.4f);
+
+        // 5. FASE DE ENTREGA: abre sobre o duto somente quando existe um prêmio preso.
+        bool haviaPremio = premioAgarrado != null;
+        if (haviaPremio) GameSession.Instance?.SetState(GameState.Delivering);
+        AbrirGarraFisica();
+
+
+        yield return new WaitForSeconds(1.2f);
+
+        // 6. FASE DE RETORNO AO CENTRO DA MÁQUINA
+        Vector3 posCentro = new Vector3(0f, LIM_YMAX, 0f);
+        while (Vector3.Distance(new Vector3(transform.position.x, 0, transform.position.z), 
+                              new Vector3(posCentro.x, 0, posCentro.z)) > 0.05f)
+        {
+            transform.position = Vector3.MoveTowards(transform.position, 
+                new Vector3(posCentro.x, LIM_YMAX, posCentro.z), 
+                2.5f * Time.deltaTime);
+
+            AtualizarCabo();
+            yield return null;
+        }
+
+        isExecutingCycle = false;
+        if (GameSession.Instance != null && GameSession.Instance.CurrentState != GameState.Delivering)
+        {
+            GameSession.Instance.SetState(GameState.Playing);
+        }
+        OnClawStateChanged?.Invoke(false);
+    }
+
+    private void FecharGarraFisica()
+    {
+        isClosed = true;
+        if (dentes != null)
+        {
+            foreach (var d in dentes) d.localRotation = Quaternion.Euler(0, d.localEulerAngles.y, 10f);
+        }
+
+        AudioFeedbackController.Instance?.PlayClank();
+        GameJuice.Instance?.ScreenShake(0.15f, 0.1f);
+        GameJuice.Instance?.HapticsLight();
+
+        Collider[] hits = Physics.OverlapSphere(transform.position, 1.0f);
+        bool grabSuccess = false;
+        foreach (var hit in hits)
+        {
+            Prize p = hit.GetComponentInParent<Prize>();
+            if (p != null && premioAgarrado == null && p.State != PrizeState.Delivered)
+            {
+                if (!PrizeStockManager.Instance.CanAttemptCapture(p)) continue;
+
+                // Fator de força da garra na chance de captura
+                float adjustedChance = p.BaseCaptureChance * clawForce;
+                if (Random.value > adjustedChance)
+                {
+                    Debug.Log($"[ClawController] A garra escorregou! Força: {clawForce:P0}, Chance: {adjustedChance:P0}");
+                    AudioFeedbackController.Instance?.PlayClank();
+                    GameJuice.Instance?.ScreenShake(0.12f, 0.08f);
+                    break;
+                }
+
+                premioAgarrado = p.gameObject;
+                p.Attach(transform);
+                grabSuccess = true;
+
+                GameJuice.Instance?.PunchScale(premioAgarrado.transform, 1.3f, 0.3f);
+                GameJuice.Instance?.SlowMotion(0.4f, 0.3f);
+                GameJuice.Instance?.PlaySparkles(transform.position);
+                GameJuice.Instance?.Haptics();
+
+                SetTrailColorGrabbing();
+                break;
+            }
+        }
+
+        OnGrabAttempt?.Invoke(grabSuccess);
+    }
+
+    private void AbrirGarraFisica()
+    {
+        isClosed = false;
+        if (dentes != null)
+        {
+            foreach (var d in dentes) d.localRotation = Quaternion.Euler(0, d.localEulerAngles.y, 45f);
+        }
+
+        SetTrailColorDefault();
+
+        if (premioAgarrado != null)
+        {
+            Prize p = premioAgarrado.GetComponentInParent<Prize>();
+            if (p != null) p.Detach();
+            premioAgarrado = null;
+
+            AudioFeedbackController.Instance?.PlayThud();
+            GameJuice.Instance?.ScreenShake(0.1f, 0.05f);
+        }
+    }
+
+    private void AtualizarCabo()
+    {
+        if (cable != null)
+        {
+            cable.SetPosition(0, new Vector3(transform.position.x, LIM_YMAX, transform.position.z));
+            cable.SetPosition(1, transform.position);
+        }
+    }
+
+    public void ResetarGarra()
+    {
+        StopAllCoroutines();
+        isExecutingCycle = false;
+        transform.position = new Vector3(0, LIM_YMAX, 0);
+        isClosed = false;
+        if (dentes != null) foreach (var d in dentes) d.localRotation = Quaternion.Euler(0, d.localEulerAngles.y, 45f);
+        SetTrailColorDefault();
+        OnClawStateChanged?.Invoke(false);
+        
+        if (premioAgarrado != null)
+        {
+            Prize p = premioAgarrado.GetComponentInParent<Prize>();
+            if (p != null) p.Detach();
+            premioAgarrado = null;
+        }
+    }
+
+    // ====== CONSTRUÇÃO VISUAL DA GARRA MECÂNICA 3D ======
+    void ConstruirGarra()
+    {
+        // Esconde o cubo original da cena: a garra é formada pelos elementos abaixo.
+        // Fazemos isso de forma explícita porque o bloco-base era o objeto que aparecia no lugar da garra.
+        MeshRenderer[] rootRenderers = GetComponents<MeshRenderer>();
+        foreach (MeshRenderer rendererBase in rootRenderers) rendererBase.enabled = false;
+        BoxCollider rootCollider = GetComponent<BoxCollider>();
+        if (rootCollider != null) rootCollider.enabled = false;
+
+        // Materiais PBR Mecânicos
+        Material mCromo = new Material(Shader.Find("Universal Render Pipeline/Lit"));
+        mCromo.color = new Color(0.92f, 0.94f, 0.98f);
+        mCromo.SetFloat("_Metallic", 0.95f);
+        mCromo.SetFloat("_Smoothness", 0.92f);
+
+        Material mChassisPreto = new Material(Shader.Find("Universal Render Pipeline/Lit"));
+        mChassisPreto.color = new Color(0.12f, 0.13f, 0.16f);
+        mChassisPreto.SetFloat("_Metallic", 0.5f);
+        mChassisPreto.SetFloat("_Smoothness", 0.75f);
+
+        Material mDouradoPistao = new Material(Shader.Find("Universal Render Pipeline/Lit"));
+        mDouradoPistao.color = new Color(1.0f, 0.82f, 0.25f);
+        mDouradoPistao.SetFloat("_Metallic", 0.92f);
+        mDouradoPistao.SetFloat("_Smoothness", 0.88f);
+
+        Material mBorrachaVermelha = new Material(Shader.Find("Universal Render Pipeline/Lit"));
+        mBorrachaVermelha.color = new Color(0.92f, 0.15f, 0.20f);
+        mBorrachaVermelha.SetFloat("_Smoothness", 0.45f);
+
+        Material mNeonRing = new Material(Shader.Find("Universal Render Pipeline/Lit"));
+        mNeonRing.color = new Color(0f, 0.95f, 1f);
+        mNeonRing.EnableKeyword("_EMISSION");
+        mNeonRing.SetColor("_EmissionColor", new Color(0f, 0.95f, 1f) * 3.2f);
+
+        // 1. CABEÇOTE CENTRAL
+        GameObject carcase = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        carcase.name = "Garra_Carcaça";
+        carcase.transform.SetParent(transform, false);
+        carcase.transform.localPosition = new Vector3(0, 0.18f, 0);
+        carcase.transform.localScale = new Vector3(0.52f, 0.18f, 0.52f);
+        carcase.GetComponent<MeshRenderer>().material = mCromo;
+        Destroy(carcase.GetComponent<Collider>());
+
+        // Anel Neon de Status no centro da garra
+        GameObject ring = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        ring.name = "Garra_Anel_Neon";
+        ring.transform.SetParent(transform, false);
+        ring.transform.localPosition = new Vector3(0, 0.18f, 0);
+        ring.transform.localScale = new Vector3(0.55f, 0.04f, 0.55f);
+        ring.GetComponent<MeshRenderer>().material = mNeonRing;
+        Destroy(ring.GetComponent<Collider>());
+
+        // Tampa Superior Cônica
+        GameObject topCone = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        topCone.name = "Garra_Tampa_Top";
+        topCone.transform.SetParent(transform, false);
+        topCone.transform.localPosition = new Vector3(0, 0.30f, 0);
+        topCone.transform.localScale = new Vector3(0.35f, 0.08f, 0.35f);
+        topCone.GetComponent<MeshRenderer>().material = mChassisPreto;
+        Destroy(topCone.GetComponent<Collider>());
+
+        // Olhal de Aço onde prende o cabo
+        GameObject eyelet = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        eyelet.name = "Garra_Olhal_Cabo";
+        eyelet.transform.SetParent(transform, false);
+        eyelet.transform.localPosition = new Vector3(0, 0.38f, 0);
+        eyelet.transform.localScale = new Vector3(0.12f, 0.12f, 0.12f);
+        eyelet.GetComponent<MeshRenderer>().material = mCromo;
+        Destroy(eyelet.GetComponent<Collider>());
+
+        // 2. OS 3 DENTES ARTICULADOS COM PISTÕES E PONTAS EMBORRACHADAS
+        dentes = new Transform[3];
+        for (int i = 0; i < 3; i++)
+        {
+            float anguloY = i * 120f;
+            GameObject pivo = new GameObject("PivoDente_" + i);
+            pivo.transform.SetParent(transform, false);
+            pivo.transform.localPosition = new Vector3(0, 0.06f, 0);
+            pivo.transform.localRotation = Quaternion.Euler(0, anguloY, 45f);
+
+            // Bloco de articulação do ombro
+            GameObject ombro = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            ombro.name = "Ombro_" + i;
+            ombro.transform.SetParent(pivo.transform, false);
+            ombro.transform.localPosition = new Vector3(0.20f, 0, 0);
+            ombro.transform.localScale = new Vector3(0.14f, 0.12f, 0.10f);
+            ombro.GetComponent<MeshRenderer>().material = mChassisPreto;
+            Destroy(ombro.GetComponent<Collider>());
+
+            // Haste Superior do Braço
+            GameObject haste = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            haste.name = "HasteSuperior_" + i;
+            haste.transform.SetParent(pivo.transform, false);
+            haste.transform.localPosition = new Vector3(0.32f, -0.28f, 0);
+            haste.transform.localRotation = Quaternion.Euler(0, 0, 16f);
+            haste.transform.localScale = new Vector3(0.09f, 0.48f, 0.08f);
+            haste.GetComponent<MeshRenderer>().material = mCromo;
+            Destroy(haste.GetComponent<Collider>());
+
+            // Mini Cilindro / Pistão Hidráulico no Braço
+            GameObject pistao = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            pistao.name = "Pistao_" + i;
+            pistao.transform.SetParent(haste.transform, false);
+            pistao.transform.localPosition = new Vector3(0.04f, 0.05f, 0);
+            pistao.transform.localScale = new Vector3(0.5f, 0.35f, 0.5f);
+            pistao.GetComponent<MeshRenderer>().material = mDouradoPistao;
+            Destroy(pistao.GetComponent<Collider>());
+
+            // Dente Inferior Curvado para dentro
+            GameObject garraInferior = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            garraInferior.name = "GarraInferior_" + i;
+            garraInferior.transform.SetParent(haste.transform, false);
+            garraInferior.transform.localPosition = new Vector3(-0.16f, -0.45f, 0);
+            garraInferior.transform.localRotation = Quaternion.Euler(0, 0, 48f);
+            garraInferior.transform.localScale = new Vector3(0.85f, 0.42f, 0.85f);
+            garraInferior.GetComponent<MeshRenderer>().material = mCromo;
+            Destroy(garraInferior.GetComponent<Collider>());
+
+            // Ponta Emborrachada Antiderrapante
+            GameObject pontaBorracha = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+            pontaBorracha.name = "Ponta_Borracha_" + i;
+            pontaBorracha.transform.SetParent(garraInferior.transform, false);
+            pontaBorracha.transform.localPosition = new Vector3(0, -0.42f, 0);
+            pontaBorracha.transform.localScale = new Vector3(0.9f, 0.28f, 0.9f);
+            pontaBorracha.GetComponent<MeshRenderer>().material = mBorrachaVermelha;
+            Destroy(pontaBorracha.GetComponent<Collider>());
+
+            dentes[i] = pivo.transform;
+        }
+    }
+
+    void ConstruirGabinete()
+    {
+        // 0. ATMOSFERA ARCADE JAPONÊS (Fundo escuro estiloso, sem void cinza)
+        Camera mainCam = Camera.main;
+        if (mainCam != null)
+        {
+            mainCam.clearFlags = CameraClearFlags.SolidColor;
+            mainCam.backgroundColor = new Color(0.05f, 0.06f, 0.09f, 1.0f);
+        }
+        RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Flat;
+        RenderSettings.ambientLight = new Color(0.18f, 0.20f, 0.28f);
+
+        // 1. CONSTRUÇÃO DO GABINETE MODULAR ARQUITETURAL DE ALTA FIDELIDADE
+        ArcadeCabinetBuilder cabinetBuilder = ArcadeCabinetBuilder.Build();
+
+        // 2. MONTE DE PELÚCIAS: responsabilidade isolada no spawner físico.
+        // O ClawController fica responsável somente por movimento, garra e captura.
+        pileSpawner = gameObject.AddComponent<PrizePileSpawner>();
+        pileSpawner.Build();
+        Debug.Log("[ClawController] Spawner físico de pelúcias conectado ao gabinete.");
+
+    }
+
+    private void BuildInitialPrizeBoard()
+    {
+        if (stockManager == null || prizePileRoot == null) return;
+        StartCoroutine(BuildInitialPrizeBoardRoutine());
+    }
+
+    private System.Collections.IEnumerator BuildInitialPrizeBoardRoutine()
+    {
+        // Mistura as raridades no volume para não formar fileiras temáticas.
+        string[] common = { "Fox", "GreenBear", "BalloonFish" };
+        string[] uncommon = { "Koala", "Badger" };
+        int index = 0;
+
+        for (int i = 0; i < 48; i++, index++)
+        {
+            SpawnInitialPrize(common[i % common.Length], PrizeRarity.Common, index, true);
+            if (i % 3 == 2) yield return new WaitForSeconds(0.035f);
+        }
+        for (int i = 0; i < 18; i++, index++)
+        {
+            SpawnInitialPrize(uncommon[i % uncommon.Length], PrizeRarity.Uncommon, index, true);
+            if (i % 3 == 2) yield return new WaitForSeconds(0.035f);
+        }
+        for (int i = 0; i < 6; i++, index++)
+        {
+            SpawnInitialPrize("Porky", PrizeRarity.Rare, index, true);
+            yield return new WaitForSeconds(0.035f);
+        }
+
+        // Dá tempo para a última leva tocar o platô e se acomodar antes do HUD liberar a partida.
+        yield return new WaitForSeconds(2.2f);
+        StabilizePrizePile();
+        prizeBoardBuilt = true;
+        Debug.Log($"[ClawController] Abastecimento concluído. Filhos no monte: {prizePileRoot.childCount}; estoque ativo: {stockManager.ActiveCount}/{stockManager.TargetBoardCount}.");
+    }
+
+    // Compatibilidade temporária com o bloco legado abaixo; o fluxo real usa PrizePileSpawner.
+    private void SpawnInitialPrize(string resourceName, PrizeRarity rarity, int index)
+    {
+        SpawnInitialPrize(resourceName, rarity, index, true);
+    }
+
+    private void SpawnInitialPrize(string resourceName, PrizeRarity rarity, int index, bool dropIn)
+    {
+        GameObject prefab = Resources.Load<GameObject>("Prizes/" + resourceName);
+        Debug.Log($"[ClawController] Tentando spawn inicial: {resourceName} ({rarity}) — prefab {(prefab != null ? "OK" : "AUSENTE")}");
+        PrizeStockEntry definition = stockManager != null ? stockManager.ReserveDirect(resourceName, rarity) : null;
+        if (definition == null)
+        {
+            Debug.LogError($"[ClawController] Definição de estoque ausente para {resourceName}; usando fallback visual.");
+            SpawnFallbackPrize(resourceName, rarity, index, dropIn);
+            return;
+        }
+
+        try
+        {
+            if (prefab == null) throw new System.InvalidOperationException($"Prefab ausente em Resources/Prizes/{resourceName}");
+            SpawnPrizeInstance(prefab, definition, index, dropIn);
+        }
+        catch (System.Exception ex)
+        {
+            // Um rig individual nunca pode abortar a montagem dos outros 35 prêmios.
+            Debug.LogError($"[ClawController] Falha no prefab {resourceName} no slot {index}: {ex.Message}. Usando fallback.");
+            SpawnFallbackPrize(resourceName, rarity, index, dropIn);
+        }
+    }
+
+    private Vector3 CalculatePilePosition(int index, bool dropIn)
+    {
+        // Sequência de baixa discrepância: espalha os prêmios sem formar linhas,
+        // mas continua determinística para que cada abertura seja reproduzível.
+        float u = Mathf.Repeat((index + 1) * 0.6180339887f, 1f);
+        float v = Mathf.Repeat((index + 1) * 0.7548776662f, 1f);
+        int layer = index / 18;
+        float x = Mathf.Lerp(-1.12f, 1.55f, u);
+        float z = Mathf.Lerp(-0.98f, 1.58f, v);
+        float moundBias = Mathf.Abs(x - 0.20f) * 0.10f + Mathf.Abs(z - 0.25f) * 0.05f;
+        float y = PRIZE_FLOOR_Y + (dropIn ? 1.05f + (index % 7) * 0.17f : 0.10f + layer * 0.28f);
+        return new Vector3(x, y + moundBias, z);
+    }
+
+    private Quaternion CalculatePileRotation(int index)
+    {
+        float yaw = Mathf.Repeat(index * 137.50776f, 360f);
+        float pitch = Mathf.Lerp(-18f, 18f, Mathf.Repeat(index * 0.381966f, 1f));
+        float roll = Mathf.Lerp(-16f, 16f, Mathf.Repeat(index * 0.517638f, 1f));
+        return Quaternion.Euler(pitch, yaw, roll);
+    }
+
+    private Vector3 CalculateSettledPilePosition(int index)
+    {
+        // Layout de repouso em camadas sobrepostas. Não é uma grade: usa duas
+        // sequências diferentes para espalhar o recheio e manter o contorno de monte.
+        int layer = index / 18;
+        float u = Mathf.Repeat((index + 11) * 0.6180339887f, 1f);
+        float v = Mathf.Repeat((index + 7) * 0.4142135623f, 1f);
+        float x = Mathf.Lerp(-1.20f, 1.40f, u);
+        float z = Mathf.Lerp(-1.08f, 1.48f, v);
+        float centerFalloff = Mathf.Abs(x - 0.10f) * 0.06f + Mathf.Abs(z - 0.18f) * 0.04f;
+        float verticalJitter = Mathf.Lerp(-0.025f, 0.025f, Mathf.Repeat(index * 0.271828f, 1f));
+        float y = PRIZE_FLOOR_Y + 0.015f + layer * 0.36f + centerFalloff + verticalJitter;
+        return new Vector3(x, y, z);
+    }
+
+    private void SpawnFallbackPrize(string resourceName, PrizeRarity rarity, int index, bool dropIn)
+    {
+        if (prizePileRoot == null) return;
+        Vector3 position = CalculatePilePosition(index, dropIn);
+        GameObject fallback = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        fallback.name = $"PeluciaFallback_{resourceName}_{rarity}_{index}";
+        fallback.transform.SetParent(prizePileRoot, false);
+        fallback.transform.SetPositionAndRotation(position, CalculatePileRotation(index));
+        fallback.transform.localScale = Vector3.one * 0.48f;
+        Color color = rarity == PrizeRarity.Rare ? new Color(1f, 0.72f, 0.05f) : rarity == PrizeRarity.Uncommon ? new Color(0.45f, 0.9f, 1f) : new Color(1f, 0.35f, 0.55f);
+        Renderer renderer = fallback.GetComponent<Renderer>();
+        if (renderer != null) renderer.material.color = color;
+        Prize prize = fallback.AddComponent<Prize>();
+        prize.ConfigureFromStock(resourceName, rarity, rarity == PrizeRarity.Rare ? 0.34f : rarity == PrizeRarity.Uncommon ? 0.78f : 0.94f);
+        Rigidbody body = fallback.GetComponent<Rigidbody>();
+        body.isKinematic = !dropIn;
+        body.useGravity = dropIn;
+        if (dropIn) body.WakeUp();
+        Debug.LogWarning($"[ClawController] Fallback visual criado para {resourceName} no slot {index}.");
+    }
+
+    private void StabilizePrizePile()
+    {
+        if (prizePileRoot == null) return;
+        Physics.SyncTransforms();
+
+        Prize[] prizes = prizePileRoot.GetComponentsInChildren<Prize>(true);
+        int stabilized = 0;
+        for (int i = 0; i < prizes.Length; i++)
+        {
+            Prize prize = prizes[i];
+            if (prize == null || prize.State != PrizeState.InPile) continue;
+            Rigidbody body = prize.Body != null ? prize.Body : prize.GetComponent<Rigidbody>();
+            if (body == null) continue;
+
+            // Após a queda, damos ao monte um repouso determinístico e orgânico.
+            // Isso elimina lacunas de simulação que fariam uma pelúcia parecer suspensa,
+            // sem voltar às fileiras: as posições continuam espalhadas e sobrepostas.
+            body.position = CalculateSettledPilePosition(i);
+            body.rotation = CalculatePileRotation(i);
+            body.linearVelocity = Vector3.zero;
+            body.angularVelocity = Vector3.zero;
+            body.isKinematic = true;
+            body.useGravity = false;
+            body.Sleep();
+
+            Transform visual = prize.transform.Find("Visual");
+            if (visual != null)
+            {
+                Renderer[] renderers = visual.GetComponentsInChildren<Renderer>();
+                if (renderers.Length > 0)
+                {
+                    Bounds bounds = renderers[0].bounds;
+                    for (int r = 1; r < renderers.Length; r++) bounds.Encapsulate(renderers[r].bounds);
+                    // Corrige qualquer pequeno drift introduzido pela simulação ou pelo pivot do rig.
+                    visual.position += Vector3.up * (body.position.y - bounds.min.y);
+                }
+            }
+            stabilized++;
+        }
+
+        Debug.Log($"[ClawController] Monte estabilizado: {stabilized} prêmios assentados e congelados após a queda.");
+    }
+
+    private void ReplenishVisiblePrizes()
+    {
+        if (!prizeBoardBuilt || stockManager == null) return;
+        int missing = Mathf.Max(0, stockManager.TargetBoardCount - stockManager.ActiveCount);
+        int batch = Mathf.Min(stockManager.ActiveRefillBatch, missing);
+        for (int i = 0; i < batch; i++) SpawnPrizeFromStock(false, stockManager.ActiveCount + i);
+        Debug.Log($"[ClawController] Reposição aplicada: +{batch} bichinho(s); ativos {stockManager.ActiveCount}/{stockManager.TargetBoardCount}.");
+    }
+
+    private void SpawnPrizeFromStock(bool initialBuild, int index)
+    {
+        PrizeStockEntry definition = stockManager != null ? stockManager.TakeNextDefinition(initialBuild) : null;
+        if (definition == null || definition.prefab == null || prizePileRoot == null) return;
+        SpawnPrizeInstance(definition.prefab, definition, index, true);
+    }
+
+    private System.Collections.IEnumerator ReleaseInitialPrizePhysics()
+    {
+        yield return new WaitForSeconds(0.75f);
+        if (prizePileRoot == null) yield break;
+        Rigidbody[] bodies = prizePileRoot.GetComponentsInChildren<Rigidbody>();
+        foreach (Rigidbody body in bodies)
+        {
+            if (body == null) continue;
+            body.isKinematic = false;
+            body.WakeUp();
+        }
+        Debug.Log($"[ClawController] Física do monte liberada: {bodies.Length} rigidbodies.");
+    }
+
+    private void SpawnPrizeInstance(GameObject prefab, PrizeStockEntry definition, int index, bool dropIn)
+    {
+        if (prefab == null || definition == null || prizePileRoot == null) return;
+
+        // O wrapper é o objeto de gameplay. O prefab riggado fica isolado como visual,
+        // evitando que pivôs e colliders internos alterem a posição física do prêmio.
+        Vector3 position = CalculatePilePosition(index, dropIn);
+        Quaternion rotation = CalculatePileRotation(index);
+
+        GameObject instance = new GameObject($"Pelucia_{definition.resourceName}_{definition.rarity}_{index}");
+        instance.transform.SetParent(prizePileRoot, false);
+        instance.transform.SetPositionAndRotation(position, rotation);
+
+        GameObject visualRoot = Instantiate(prefab, instance.transform, false);
+        visualRoot.name = "Visual";
+        Debug.Log($"[ClawController] Spawned {instance.name} usando visual {prefab.name}");
+
+        foreach (Animator anim in visualRoot.GetComponentsInChildren<Animator>()) anim.enabled = false;
+
+        Renderer[] renderers = visualRoot.GetComponentsInChildren<Renderer>();
+        if (renderers.Length > 0)
+        {
+            Bounds bounds = renderers[0].bounds;
+            for (int i = 1; i < renderers.Length; i++) bounds.Encapsulate(renderers[i].bounds);
+            float maxDimension = Mathf.Max(bounds.size.x, bounds.size.y, bounds.size.z);
+            if (maxDimension > 0.0001f) visualRoot.transform.localScale *= 0.58f / maxDimension;
+
+            // Corrige o pivot deslocado do rig sem mover o wrapper físico.
+            Renderer[] scaledRenderers = visualRoot.GetComponentsInChildren<Renderer>();
+            Bounds scaledBounds = scaledRenderers[0].bounds;
+            for (int i = 1; i < scaledRenderers.Length; i++) scaledBounds.Encapsulate(scaledRenderers[i].bounds);
+            // O ponto de apoio é o fundo visual, não o centro arbitrário do rig.
+            // Cada rig Blender possui um pivot diferente; alinhar min.y ao fundo
+            // do collider evita que alguns modelos fiquem suspensos no monte.
+            float desiredVisualBottomY = instance.transform.position.y;
+            float visualBottomDeltaY = desiredVisualBottomY - scaledBounds.min.y;
+            visualRoot.transform.localPosition += instance.transform.InverseTransformVector(Vector3.up * visualBottomDeltaY);
+        }
+        else
+        {
+            visualRoot.transform.localScale = Vector3.one * 0.35f;
+        }
+
+        Prize prize = instance.AddComponent<Prize>();
+        prize.ConfigureFromStock(definition.resourceName, definition.rarity, definition.baseCaptureChance);
+
+        Rigidbody body = instance.GetComponent<Rigidbody>();
+        body.mass = definition.rarity == PrizeRarity.Rare ? 1.65f : definition.rarity == PrizeRarity.Uncommon ? 1.45f : 1.25f;
+        // O collider só é liberado depois de existir, evitando um frame sem contato.
+        body.isKinematic = true;
+        body.useGravity = false;
+        body.linearVelocity = Vector3.zero;
+        body.angularVelocity = Vector3.zero;
+        body.linearDamping = 2f;
+        body.angularDamping = 2.2f;
+        body.collisionDetectionMode = CollisionDetectionMode.Continuous;
+
+        foreach (Collider existing in visualRoot.GetComponentsInChildren<Collider>())
+        {
+            if (existing != null) Destroy(existing);
+        }
+        BoxCollider boxCollider = instance.GetComponent<BoxCollider>();
+        if (boxCollider == null) boxCollider = instance.AddComponent<BoxCollider>();
+        boxCollider.center = new Vector3(0f, 0.27f, 0f);
+        boxCollider.size = new Vector3(0.50f, 0.54f, 0.50f);
+
+        if (dropIn)
+        {
+            body.isKinematic = false;
+            body.useGravity = true;
+            body.WakeUp();
+        }
+
+        stockManager.RegisterSpawned(prize, definition);
+    }
+
+    void ConfigurarRastroLuminoso()
+    {
+        GameObject trailObj = new GameObject("RastroLuminoso_Garra");
+        trailObj.transform.SetParent(transform, false);
+        trailObj.transform.localPosition = new Vector3(0, -0.2f, 0);
+
+        trailRenderer = trailObj.AddComponent<TrailRenderer>();
+        trailRenderer.time = 0.45f;
+        trailRenderer.startWidth = 0.22f;
+        trailRenderer.endWidth = 0.01f;
+        trailRenderer.minVertexDistance = 0.02f;
+        trailRenderer.autodestruct = false;
+
+        Material mTrail = new Material(Shader.Find("Universal Render Pipeline/Particles/Unlit"));
+        mTrail.color = new Color(0f, 0.95f, 1f, 0.95f);
+        mTrail.EnableKeyword("_EMISSION");
+        mTrail.SetColor("_EmissionColor", new Color(0f, 0.95f, 1f) * 3.5f);
+        trailRenderer.material = mTrail;
+
+        SetTrailColorDefault();
+
+        // Luz pontual neon na garra para iluminar o poço de pelúcias ao descer
+        GameObject luzGarraObj = new GameObject("LuzNeon_Garra");
+        luzGarraObj.transform.SetParent(transform, false);
+        luzGarraObj.transform.localPosition = new Vector3(0, -0.3f, 0);
+        Light luzGarra = luzGarraObj.AddComponent<Light>();
+        luzGarra.type = LightType.Point;
+        luzGarra.color = new Color(0f, 0.95f, 1f);
+        luzGarra.range = 3.5f;
+        luzGarra.intensity = 2.2f;
+    }
+
+    void SetTrailColorDefault()
+    {
+        if (trailRenderer == null) return;
+        Gradient grad = new Gradient();
+        grad.SetKeys(
+            new GradientColorKey[] {
+                new GradientColorKey(new Color(0f, 0.95f, 1f), 0f),      // Neon Cyan
+                new GradientColorKey(new Color(1f, 0.1f, 0.85f), 0.5f),   // Electric Pink
+                new GradientColorKey(new Color(0.5f, 0f, 1f), 1f)        // Purple
+            },
+            new GradientAlphaKey[] {
+                new GradientAlphaKey(0.9f, 0f),
+                new GradientAlphaKey(0.6f, 0.6f),
+                new GradientAlphaKey(0f, 1f)
+            }
+        );
+        trailRenderer.colorGradient = grad;
+    }
+
+    void SetTrailColorGrabbing()
+    {
+        if (trailRenderer == null) return;
+        Gradient grad = new Gradient();
+        grad.SetKeys(
+            new GradientColorKey[] {
+                new GradientColorKey(new Color(1f, 0.9f, 0.2f), 0f),     // Neon Gold
+                new GradientColorKey(new Color(1f, 0.4f, 0.1f), 0.5f),   // Orange
+                new GradientColorKey(new Color(1f, 0.1f, 0.3f), 1f)     // Amber/Red
+            },
+            new GradientAlphaKey[] {
+                new GradientAlphaKey(1.0f, 0f),
+                new GradientAlphaKey(0.7f, 0.6f),
+                new GradientAlphaKey(0f, 1f)
+            }
+        );
+        trailRenderer.colorGradient = grad;
+    }
+}
