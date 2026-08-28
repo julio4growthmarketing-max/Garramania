@@ -234,7 +234,9 @@ public class ClawController : MonoBehaviour
         while (transform.position.y > targetY + 0.02f)
         {
             // Se detectar prêmio abaixo da garra quando já estiver baixo, envolve e fecha
-            if (transform.position.y <= -0.80f && Physics.CheckSphere(transform.position + Vector3.down * 0.35f, 0.28f, prizeLayer))
+            int pLayer = LayerMask.NameToLayer("Prize");
+            int mask = prizeLayer.value != 0 ? prizeLayer.value : (pLayer != -1 ? (1 << pLayer) : ~0);
+            if (transform.position.y <= -0.80f && Physics.CheckSphere(transform.position + Vector3.down * 0.35f, 0.30f, mask))
             {
                 transform.position = Vector3.MoveTowards(transform.position, 
                     new Vector3(transform.position.x, Mathf.Max(targetY, transform.position.y - 0.06f), transform.position.z), 
@@ -266,6 +268,7 @@ public class ClawController : MonoBehaviour
                 new Vector3(transform.position.x, LIM_YMAX, transform.position.z), 
                 2.6f * Time.deltaTime);
 
+            UpdateHeldPrizePhysics();
             AtualizarCabo();
             yield return null;
         }
@@ -281,6 +284,7 @@ public class ClawController : MonoBehaviour
                 new Vector3(posCalha.x, LIM_YMAX, posCalha.z), 
                 3.0f * Time.deltaTime);
 
+            UpdateHeldPrizePhysics();
             AtualizarCabo();
             yield return null;
         }
@@ -329,52 +333,87 @@ public class ClawController : MonoBehaviour
     {
         CaptureEvaluation best = new CaptureEvaluation { score = -1f, isValid = false };
 
+        Vector3 capturePoint = carrySocket != null ? carrySocket.position : (transform.position + Vector3.down * 0.35f);
+        Vector3 clawPos = transform.position;
+        float clawSpeed = clawVelocity.magnitude;
+
         if (prizeLayer.value == 0)
         {
             int pLayer = LayerMask.NameToLayer("Prize");
             if (pLayer != -1) prizeLayer = 1 << pLayer;
-            else prizeLayer = ~0;
         }
 
-        Vector3 origin = transform.position + Vector3.down * 0.35f;
-        Collider[] hits = Physics.OverlapSphere(origin, captureRadius, prizeLayer);
-        
-        if (hits == null || hits.Length == 0) return best;
-
-        Vector3 clawPos = transform.position;
-        float clawSpeed = clawVelocity.magnitude;
+        Collider[] hits = prizeLayer.value != 0 ? Physics.OverlapSphere(capturePoint, captureRadius, prizeLayer) : Physics.OverlapSphere(capturePoint, captureRadius);
+        if (hits == null || hits.Length == 0) hits = Physics.OverlapSphere(capturePoint, captureRadius);
 
         System.Collections.Generic.HashSet<Prize> evaluated = new System.Collections.Generic.HashSet<Prize>();
 
-        foreach (var col in hits)
+        if (hits != null && hits.Length > 0)
         {
-            Prize prize = col.GetComponentInParent<Prize>();
-            if (prize == null || evaluated.Contains(prize) || prize.State == PrizeState.Delivered || prize.State == PrizeState.Attached || prize.Body == null) continue;
-            evaluated.Add(prize);
-
-            Vector3 prizePos = prize.transform.position;
-
-            float horizDist = Vector2.Distance(
-                new Vector2(clawPos.x, clawPos.z),
-                new Vector2(prizePos.x, prizePos.z)
-            );
-            float horizontalAlign = 1f - Mathf.Clamp01(horizDist / maxHorizontalAlignDistance);
-
-            float verticalDelta = Mathf.Abs((prizePos.y - clawPos.y) - idealVerticalOffset);
-            float verticalProximity = 1f - Mathf.Clamp01(verticalDelta / verticalTolerance);
-
-            float stability = 1f - Mathf.Clamp01(clawSpeed / 2.2f);
-
-            float score = (horizontalAlign * 0.60f) + (verticalProximity * 0.25f) + (stability * 0.15f);
-
-            if (score > best.score)
+            foreach (var col in hits)
             {
-                best.prize = prize;
-                best.score = score;
-                best.horizontalAlign = horizontalAlign;
-                best.verticalProximity = verticalProximity;
-                best.stability = stability;
-                best.isValid = score > 0.18f;
+                Prize prize = col.GetComponentInParent<Prize>();
+                if (prize == null || evaluated.Contains(prize) || prize.State == PrizeState.Delivered || prize.State == PrizeState.Attached || prize.Body == null) continue;
+                evaluated.Add(prize);
+
+                Vector3 prizePos = prize.transform.position;
+                float horizDist = Vector2.Distance(
+                    new Vector2(capturePoint.x, capturePoint.z),
+                    new Vector2(prizePos.x, prizePos.z)
+                );
+                float horizontalAlign = 1f - Mathf.Clamp01(horizDist / maxHorizontalAlignDistance);
+
+                float verticalDelta = Mathf.Abs(prizePos.y - capturePoint.y);
+                float verticalProximity = 1f - Mathf.Clamp01(verticalDelta / verticalTolerance);
+
+                float stability = 1f - Mathf.Clamp01(clawSpeed / 2.2f);
+
+                float score = (horizontalAlign * 0.55f) + (verticalProximity * 0.30f) + (stability * 0.15f);
+
+                if (score > best.score)
+                {
+                    best.prize = prize;
+                    best.score = score;
+                    best.horizontalAlign = horizontalAlign;
+                    best.verticalProximity = verticalProximity;
+                    best.stability = stability;
+                    best.isValid = score > 0.15f;
+                }
+            }
+        }
+
+        // Fallback Infalível: se o OverlapSphere da física não pegou o colisor por problema de camada ou escala, busca na área
+        if (!best.isValid || best.prize == null)
+        {
+            Prize[] allPrizes = Object.FindObjectsByType<Prize>(FindObjectsSortMode.None);
+            foreach (var prize in allPrizes)
+            {
+                if (prize == null || evaluated.Contains(prize) || prize.State == PrizeState.Delivered || prize.State == PrizeState.Attached || prize.Body == null) continue;
+
+                Vector3 prizePos = prize.transform.position;
+                float horizDist = Vector2.Distance(
+                    new Vector2(capturePoint.x, capturePoint.z),
+                    new Vector2(prizePos.x, prizePos.z)
+                );
+                float verticalDist = Mathf.Abs(prizePos.y - capturePoint.y);
+
+                if (horizDist > maxHorizontalAlignDistance || verticalDist > verticalTolerance) continue;
+
+                float horizontalAlign = 1f - Mathf.Clamp01(horizDist / maxHorizontalAlignDistance);
+                float verticalProximity = 1f - Mathf.Clamp01(verticalDist / verticalTolerance);
+                float stability = 1f - Mathf.Clamp01(clawSpeed / 2.2f);
+
+                float score = (horizontalAlign * 0.55f) + (verticalProximity * 0.30f) + (stability * 0.15f);
+
+                if (score > best.score)
+                {
+                    best.prize = prize;
+                    best.score = score;
+                    best.horizontalAlign = horizontalAlign;
+                    best.verticalProximity = verticalProximity;
+                    best.stability = stability;
+                    best.isValid = score > 0.15f;
+                }
             }
         }
 
@@ -392,13 +431,13 @@ public class ClawController : MonoBehaviour
             OnGrabAttempt?.Invoke(false);
             AudioFeedbackController.Instance?.PlayClank();
             GameJuice.Instance?.HapticsLight();
-            if (eval.score > 0.10f) AudioFeedbackController.Instance?.PlayNearMiss();
+            if (eval.score > 0.08f) AudioFeedbackController.Instance?.PlayNearMiss();
             return;
         }
 
-        currentGripForce = baseGripForce * clawForce * Mathf.Lerp(0.75f, 1.20f, eval.score);
+        currentGripForce = baseGripForce * clawForce * Mathf.Lerp(0.80f, 1.25f, eval.score);
         currentHeldPrize = eval.prize;
-        premioAgarrado = currentHeldPrize.gameObject;
+        premioAgarrado = eval.prize.gameObject;
 
         Transform anchor = carrySocket != null ? carrySocket : (clawVisualContainer != null ? clawVisualContainer : transform);
         currentHeldPrize.Attach(
@@ -419,21 +458,25 @@ public class ClawController : MonoBehaviour
         SetTrailColorGrabbing();
 
         // Câmera
-        ClawCameraController camCtrl = ClawCameraController.Instance != null ? ClawCameraController.Instance : FindFirstObjectByType<ClawCameraController>();
-        camCtrl?.Shake(0.11f, 0.13f);
-        camCtrl?.PunchFOV(0.7f);
+        var cam = FindFirstObjectByType<ClawCameraController>();
+        if (cam != null)
+        {
+            cam.Shake(0.11f, 0.13f);
+            cam.PunchFOV(0.7f);
+        }
 
         Debug.Log($"[Claw] Captura firme qualidade {eval.score:P0} | Grip {currentGripForce:F2} | {currentHeldPrize.prizeId}");
     }
 
     private void UpdateHeldPrizePhysics()
     {
-        if (currentHeldPrize == null || currentHeldPrize.State == PrizeState.Delivered) return;
+        if (currentHeldPrize == null) return;
+        if (currentHeldPrize.State == PrizeState.Delivered || currentHeldPrize.State == PrizeState.Dropped) return;
 
         float swayPenalty = currentSwayAngle.magnitude / Mathf.Max(0.01f, swayMaxAngle);
         float movementPenalty = Mathf.Clamp01(clawVelocity.magnitude / 2.2f);
 
-        float gripLoss = (gripLossPerSecondWhileMoving * movementPenalty + 
+        float gripLoss = (gripLossPerSecondWhileMoving * movementPenalty +
                           gripLossPerSwayDegree * currentSwayAngle.magnitude) * Time.deltaTime;
 
         currentGripForce = Mathf.Max(0.05f, currentGripForce - gripLoss);
@@ -450,15 +493,16 @@ public class ClawController : MonoBehaviour
 
                 AudioFeedbackController.Instance?.PlaySlipStart();
                 GameJuice.Instance?.HapticsSlip();
-                ClawCameraController camCtrl = ClawCameraController.Instance != null ? ClawCameraController.Instance : FindFirstObjectByType<ClawCameraController>();
-                camCtrl?.Shake(0.07f, 0.45f);
+
+                var cam = FindFirstObjectByType<ClawCameraController>();
+                cam?.Shake(0.07f, 0.45f);
 
                 Debug.Log("[Claw] Prêmio começou a escorregar!");
             }
 
             slipTimer += Time.deltaTime;
 
-            if (slipTimer > 1.0f)
+            if (slipTimer > 0.85f)
             {
                 ReleasePrizeWithPhysics();
             }
@@ -478,7 +522,6 @@ public class ClawController : MonoBehaviour
         currentHeldPrize = null;
         premioAgarrado = null;
         isSlipping = false;
-        slipTimer = 0f;
 
         p.Detach();
 
@@ -492,8 +535,10 @@ public class ClawController : MonoBehaviour
         AudioFeedbackController.Instance?.PlayDropThud();
         GameJuice.Instance?.HapticsHeavy();
         GameJuice.Instance?.ScreenShake(0.18f, 0.12f);
-        ClawCameraController camCtrl = ClawCameraController.Instance != null ? ClawCameraController.Instance : FindFirstObjectByType<ClawCameraController>();
-        camCtrl?.Shake(0.17f, 0.2f);
+
+        var cam = FindFirstObjectByType<ClawCameraController>();
+        cam?.Shake(0.17f, 0.2f);
+
         SetTrailColorDefault();
 
         Debug.Log("[Claw] Prêmio escorregou e caiu.");
@@ -511,6 +556,7 @@ public class ClawController : MonoBehaviour
 
         if (currentHeldPrize != null)
         {
+            // Entrega normal (chegou na calha)
             Prize p = currentHeldPrize;
             currentHeldPrize = null;
             premioAgarrado = null;
@@ -519,9 +565,7 @@ public class ClawController : MonoBehaviour
 
             p.MarkDelivered();
             if (GameSession.Instance != null)
-            {
                 GameSession.Instance.RegisterPrizeDelivered(p);
-            }
 
             AudioFeedbackController.Instance?.PlayDeliverySuccess();
             GameJuice.Instance?.HapticsSuccess();
@@ -531,7 +575,8 @@ public class ClawController : MonoBehaviour
         }
         else if (premioAgarrado != null)
         {
-            Prize p = premioAgarrado.GetComponent<Prize>();
+            // fallback antigo
+            Prize p = premioAgarrado.GetComponentInParent<Prize>();
             if (p != null)
             {
                 p.MarkDelivered();

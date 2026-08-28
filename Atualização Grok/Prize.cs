@@ -58,28 +58,28 @@ public class Prize : MonoBehaviour
         Rarity = rarity;
         BaseCaptureChance = Mathf.Clamp(captureChance, 0.05f, 1f);
 
-        // Ajusta dificuldade física calibrada por raridade
+        // Ajusta dificuldade física por raridade
         switch (rarity)
         {
             case PrizeRarity.Common:
-                gripRequired = 0.32f;
-                massFeel = 0.95f;
-                slipperiness = 0.12f;
+                gripRequired = 0.42f;
+                massFeel = 1.0f;
+                slipperiness = 0.18f;
                 break;
             case PrizeRarity.Uncommon:
-                gripRequired = 0.45f;
-                massFeel = 1.15f;
-                slipperiness = 0.20f;
-                break;
-            case PrizeRarity.Rare:
-                gripRequired = 0.62f;
-                massFeel = 1.40f;
+                gripRequired = 0.58f;
+                massFeel = 1.25f;
                 slipperiness = 0.32f;
                 break;
+            case PrizeRarity.Rare:
+                gripRequired = 0.78f;
+                massFeel = 1.55f;
+                slipperiness = 0.48f;
+                break;
             case PrizeRarity.Legendary:
-                gripRequired = 0.82f;
-                massFeel = 1.70f;
-                slipperiness = 0.45f;
+                gripRequired = 0.92f;
+                massFeel = 1.9f;
+                slipperiness = 0.62f;
                 break;
         }
 
@@ -88,7 +88,6 @@ public class Prize : MonoBehaviour
 
     public void Attach(Transform anchor, float quality, float gripForce)
     {
-        if (anchor == null) return;
         RefreshPhysicsReferences();
         State = PrizeState.Attached;
         CaptureQuality = Mathf.Clamp01(quality);
@@ -96,23 +95,16 @@ public class Prize : MonoBehaviour
 
         if (Body != null)
         {
-            Body.linearVelocity = Vector3.zero;
-            Body.angularVelocity = Vector3.zero;
             Body.isKinematic = true;
             Body.useGravity = false;
+            Body.linearVelocity = Vector3.zero;
+            Body.angularVelocity = Vector3.zero;
         }
 
-        transform.SetParent(anchor, false);
-        if (anchor.name.Contains("Socket"))
-        {
-            transform.localPosition = Vector3.zero;
-            transform.localRotation = Quaternion.identity;
-        }
-        else
-        {
-            transform.localPosition = new Vector3(0f, -0.42f, 0f);
-            transform.localRotation = Quaternion.Euler(0f, 180f, 0f);
-        }
+        transform.SetParent(anchor, true);
+        // Posição centralizada entre os dentes
+        transform.localPosition = new Vector3(0f, -0.42f, 0f);
+        transform.localRotation = Quaternion.Euler(0f, 180f, 0f);
     }
 
     /// <summary>
@@ -120,7 +112,7 @@ public class Prize : MonoBehaviour
     /// </summary>
     public void Attach(Transform anchor)
     {
-        Attach(anchor, 0.85f, 1.0f);
+        Attach(anchor, 0.75f, 0.8f);
     }
 
     public void BeginSlip()
@@ -141,20 +133,6 @@ public class Prize : MonoBehaviour
             Body.WakeUp();
         }
         transform.SetParent(null);
-        StartCoroutine(CheckSettleRoutine());
-    }
-
-    private System.Collections.IEnumerator CheckSettleRoutine()
-    {
-        yield return new WaitForSeconds(0.5f);
-        while (Body != null && Body.linearVelocity.sqrMagnitude > 0.05f)
-        {
-            yield return new WaitForSeconds(0.2f);
-        }
-        if (State == PrizeState.Dropped)
-        {
-            State = PrizeState.InPile;
-        }
     }
 
     public void MarkDelivered()
@@ -163,8 +141,6 @@ public class Prize : MonoBehaviour
         State = PrizeState.Delivered;
         if (Body != null)
         {
-            Body.linearVelocity = Vector3.zero;
-            Body.angularVelocity = Vector3.zero;
             Body.isKinematic = false;
             Body.useGravity = true;
             Body.WakeUp();
@@ -177,9 +153,10 @@ public class Prize : MonoBehaviour
     /// </summary>
     public bool IsGripSufficient(float currentGrip, float swayPenalty, float movementPenalty)
     {
-        float effectiveRequired = gripRequired * (1f + slipperiness * 0.35f);
-        effectiveRequired *= Mathf.Lerp(1.20f, 0.85f, CaptureQuality);
-        effectiveRequired += (swayPenalty * 0.15f) + (movementPenalty * 0.10f);
+        float effectiveRequired = gripRequired * (1f + slipperiness * 0.6f);
+        effectiveRequired *= (1f + (1f - CaptureQuality) * 0.45f); // captura ruim exige mais força
+        effectiveRequired *= (1f + swayPenalty * 0.35f);
+        effectiveRequired *= (1f + movementPenalty * 0.25f);
 
         return currentGrip >= effectiveRequired;
     }
