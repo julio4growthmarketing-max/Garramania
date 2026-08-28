@@ -311,9 +311,13 @@ public class ClawController : MonoBehaviour
         }
 
         isExecutingCycle = false;
-        if (GameSession.Instance != null && GameSession.Instance.CurrentState != GameState.Delivering)
+        if (GameSession.Instance != null && GameSession.Instance.CurrentState != GameState.GameOver)
         {
             GameSession.Instance.SetState(GameState.Playing);
+        }
+        if (InputRouter.Instance != null && (GameSession.Instance == null || GameSession.Instance.CurrentState == GameState.Playing))
+        {
+            InputRouter.Instance.SetBlocked(false);
         }
         OnClawStateChanged?.Invoke(false);
     }
@@ -554,36 +558,26 @@ public class ClawController : MonoBehaviour
 
         SetTrailColorDefault();
 
-        if (currentHeldPrize != null)
+        Prize p = currentHeldPrize != null ? currentHeldPrize : (premioAgarrado != null ? premioAgarrado.GetComponent<Prize>() : null);
+        if (p != null)
         {
-            // Entrega normal (chegou na calha)
-            Prize p = currentHeldPrize;
             currentHeldPrize = null;
             premioAgarrado = null;
             isSlipping = false;
             slipTimer = 0f;
 
+            // Marca o prêmio como entregue e registra a vitória na GameSession
             p.MarkDelivered();
             if (GameSession.Instance != null)
+            {
                 GameSession.Instance.RegisterPrizeDelivered(p);
+            }
 
             AudioFeedbackController.Instance?.PlayDeliverySuccess();
             GameJuice.Instance?.HapticsSuccess();
             GameJuice.Instance?.ScreenShake(0.12f, 0.08f);
 
-            Destroy(p.gameObject, 1.5f);
-        }
-        else if (premioAgarrado != null)
-        {
-            // fallback antigo
-            Prize p = premioAgarrado.GetComponentInParent<Prize>();
-            if (p != null)
-            {
-                p.MarkDelivered();
-                if (GameSession.Instance != null) GameSession.Instance.RegisterPrizeDelivered(p);
-                Destroy(p.gameObject, 1.5f);
-            }
-            premioAgarrado = null;
+            Destroy(p.gameObject, 2.0f);
         }
     }
 
