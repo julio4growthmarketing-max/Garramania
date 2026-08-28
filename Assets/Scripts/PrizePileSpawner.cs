@@ -162,6 +162,9 @@ public sealed class PrizePileSpawner : MonoBehaviour
         wrapper.transform.SetParent(pileRoot, false);
         wrapper.transform.SetPositionAndRotation(DropPosition(index), PrizeRotation(index));
 
+        int prizeLayerIdx = LayerMask.NameToLayer("Prize");
+        if (prizeLayerIdx != -1) wrapper.layer = prizeLayerIdx;
+
         GameObject visualRoot = Instantiate(prefab, wrapper.transform, false);
         visualRoot.name = "Visual";
         DisableInternalPhysics(visualRoot);
@@ -196,6 +199,8 @@ public sealed class PrizePileSpawner : MonoBehaviour
         fallback.transform.SetParent(pileRoot, false);
         fallback.transform.SetPositionAndRotation(DropPosition(index), PrizeRotation(index));
         fallback.transform.localScale = Vector3.one * 0.50f;
+        int prizeLayerIdx = LayerMask.NameToLayer("Prize");
+        if (prizeLayerIdx != -1) fallback.layer = prizeLayerIdx;
         Renderer renderer = fallback.GetComponent<Renderer>();
         if (renderer != null) renderer.material.color = rarity == PrizeRarity.Rare ? new Color(1f, 0.72f, 0.05f) : rarity == PrizeRarity.Uncommon ? new Color(0.45f, 0.9f, 1f) : new Color(1f, 0.35f, 0.55f);
         Prize prize = fallback.AddComponent<Prize>();
@@ -244,10 +249,10 @@ public sealed class PrizePileSpawner : MonoBehaviour
         if (prizeMaterial != null) return prizeMaterial;
         prizeMaterial = new PhysicsMaterial("Pelucia_Atrito")
         {
-            staticFriction = 0.92f,
-            dynamicFriction = 0.78f,
-            bounciness = 0.02f,
-            frictionCombine = PhysicsMaterialCombine.Multiply,
+            staticFriction = 0.90f,
+            dynamicFriction = 0.82f,
+            bounciness = 0.08f,
+            frictionCombine = PhysicsMaterialCombine.Maximum,
             bounceCombine = PhysicsMaterialCombine.Minimum
         };
         return prizeMaterial;

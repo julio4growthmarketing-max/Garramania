@@ -21,6 +21,11 @@ public class AudioFeedbackController : MonoBehaviour
     private AudioClip clipCoin;
     private AudioClip clipWarning;
     private AudioClip clipMusic;
+    private AudioClip clipGrabSuccess;
+    private AudioClip clipSlipStart;
+    private AudioClip clipDropThud;
+    private AudioClip clipDeliverySuccess;
+    private AudioClip clipNearMiss;
 
     private float servoThrottle = 0f;
     private const float SERVO_COOLDOWN = 0.15f;
@@ -91,6 +96,36 @@ public class AudioFeedbackController : MonoBehaviour
         if (clipWarning != null) sfxSource2.PlayOneShot(clipWarning, 0.5f);
     }
 
+    public void PlayGrabSuccess()
+    {
+        if (clipGrabSuccess != null) sfxSource.PlayOneShot(clipGrabSuccess, 0.85f);
+        else PlayClank();
+    }
+
+    public void PlaySlipStart()
+    {
+        if (clipSlipStart != null) sfxSource2.PlayOneShot(clipSlipStart, 0.65f);
+        else PlayWarning();
+    }
+
+    public void PlayDropThud()
+    {
+        if (clipDropThud != null) sfxSource.PlayOneShot(clipDropThud, 0.75f);
+        else PlayThud();
+    }
+
+    public void PlayDeliverySuccess()
+    {
+        if (clipDeliverySuccess != null) sfxSource.PlayOneShot(clipDeliverySuccess, 0.95f);
+        else PlayFanfare();
+    }
+
+    public void PlayNearMiss()
+    {
+        if (clipNearMiss != null) sfxSource2.PlayOneShot(clipNearMiss, 0.6f);
+        else PlayWarning();
+    }
+
     public void PlayMusic()
     {
         if (clipMusic != null && !musicSource.isPlaying)
@@ -118,6 +153,12 @@ public class AudioFeedbackController : MonoBehaviour
         clipCoin = GenerateCoin(sampleRate);
         clipWarning = GenerateWarning(sampleRate);
         clipMusic = GenerateArcadeLoop(sampleRate);
+
+        clipGrabSuccess = GenerateGrabSuccess(sampleRate);
+        clipSlipStart = GenerateSlipStart(sampleRate);
+        clipDropThud = GenerateDropThud(sampleRate);
+        clipDeliverySuccess = GenerateDeliverySuccess(sampleRate);
+        clipNearMiss = GenerateNearMiss(sampleRate);
 
         Debug.Log("[AudioFeedback] Todos os clips de áudio gerados proceduralmente!");
     }
@@ -288,6 +329,92 @@ public class AudioFeedbackController : MonoBehaviour
         }
 
         return CreateClip("ArcadeLoop", samples, sr, data);
+    }
+
+    /// <summary>Engate bem-sucedido: trava mecânica com clique ressonante e brilho</summary>
+    AudioClip GenerateGrabSuccess(int sr)
+    {
+        int samples = (int)(sr * 0.28f);
+        float[] data = new float[samples];
+        for (int i = 0; i < samples; i++)
+        {
+            float t = (float)i / sr;
+            float clickEnv = Mathf.Exp(-t * 45f);
+            float ringEnv = Mathf.Exp(-t * 12f);
+            data[i] = (Mathf.Sin(2f * Mathf.PI * 920f * t) * 0.4f + Random.Range(-0.1f, 0.1f)) * clickEnv;
+            data[i] += (Mathf.Sin(2f * Mathf.PI * 1350f * t) * 0.35f + Mathf.Sin(2f * Mathf.PI * 2700f * t) * 0.2f) * ringEnv;
+        }
+        return CreateClip("GrabSuccess", samples, sr, data);
+    }
+
+    /// <summary>Início de escorregamento: atrito tenso / chiado mecânico de alta tensão</summary>
+    AudioClip GenerateSlipStart(int sr)
+    {
+        int samples = (int)(sr * 0.20f);
+        float[] data = new float[samples];
+        for (int i = 0; i < samples; i++)
+        {
+            float t = (float)i / sr;
+            float env = Mathf.Sin(Mathf.Clamp01(t / 0.20f) * Mathf.PI);
+            float freq = Mathf.Lerp(650f, 1350f, t / 0.20f) + Mathf.Sin(2f * Mathf.PI * 45f * t) * 120f;
+            data[i] = Mathf.Sin(2f * Mathf.PI * freq * t) * 0.35f * env;
+            data[i] += Random.Range(-0.15f, 0.15f) * env * 0.5f;
+        }
+        return CreateClip("SlipStart", samples, sr, data);
+    }
+
+    /// <summary>Queda do prêmio: baque grave e abafado da pelúcia caindo no monte</summary>
+    AudioClip GenerateDropThud(int sr)
+    {
+        int samples = (int)(sr * 0.32f);
+        float[] data = new float[samples];
+        for (int i = 0; i < samples; i++)
+        {
+            float t = (float)i / sr;
+            float env = Mathf.Exp(-t * 12f);
+            data[i] = Mathf.Sin(2f * Mathf.PI * 65f * t) * 0.7f * env;
+            data[i] += Mathf.Sin(2f * Mathf.PI * 110f * t) * 0.3f * env;
+            data[i] += Random.Range(-0.08f, 0.08f) * Mathf.Exp(-t * 35f);
+        }
+        return CreateClip("DropThud", samples, sr, data);
+    }
+
+    /// <summary>Entrega bem-sucedida: fanfarra triunfal arcade de vitória</summary>
+    AudioClip GenerateDeliverySuccess(int sr)
+    {
+        float duration = 1.0f;
+        int samples = (int)(sr * duration);
+        float[] data = new float[samples];
+        float[] notes = { 523.25f, 659.25f, 783.99f, 1046.50f, 1318.51f }; // C5, E5, G5, C6, E6
+        float noteDur = duration / notes.Length;
+
+        for (int i = 0; i < samples; i++)
+        {
+            float t = (float)i / sr;
+            int nIdx = Mathf.Min((int)(t / noteDur), notes.Length - 1);
+            float nT = t - (nIdx * noteDur);
+            float env = Mathf.Clamp01(1f - (nT / noteDur) * 0.45f) * Mathf.Clamp01(nT * 60f);
+            data[i] = Mathf.Sin(2f * Mathf.PI * notes[nIdx] * t) * 0.35f * env;
+            data[i] += Mathf.Sin(2f * Mathf.PI * notes[nIdx] * 2f * t) * 0.15f * env;
+            // Sparkle chime
+            data[i] += Mathf.Sin(2f * Mathf.PI * (notes[nIdx] * 3f) * t) * 0.08f * env;
+        }
+        return CreateClip("DeliverySuccess", samples, sr, data);
+    }
+
+    /// <summary>Quase pegou: zumbido descendente de tensão / near-miss</summary>
+    AudioClip GenerateNearMiss(int sr)
+    {
+        int samples = (int)(sr * 0.22f);
+        float[] data = new float[samples];
+        for (int i = 0; i < samples; i++)
+        {
+            float t = (float)i / sr;
+            float env = 1f - (t / 0.22f);
+            float freq = Mathf.Lerp(520f, 260f, t / 0.22f);
+            data[i] = Mathf.Sign(Mathf.Sin(2f * Mathf.PI * freq * t)) * 0.25f * env;
+        }
+        return CreateClip("NearMiss", samples, sr, data);
     }
 
     AudioClip CreateClip(string name, int samples, int sampleRate, float[] data)

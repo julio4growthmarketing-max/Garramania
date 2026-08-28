@@ -22,7 +22,7 @@ public class ClawController : MonoBehaviour
     public UnityEngine.Events.UnityEvent<bool> OnClawStateChanged = new UnityEngine.Events.UnityEvent<bool>();
     public UnityEngine.Events.UnityEvent<bool> OnGrabAttempt = new UnityEngine.Events.UnityEvent<bool>();
     public bool IsClosed => isClosed;
-    public bool HasPrize => currentHeldPrize != null || premioAgarrado != null;
+    public bool HasPrize => premioAgarrado != null;
 
     [Header("Força da Garra")]
     [Range(0.1f, 1.0f)]
@@ -33,33 +33,6 @@ public class ClawController : MonoBehaviour
     {
         clawForce = Mathf.Clamp(force, 0.1f, 1.0f);
         Debug.Log($"[ClawController] Força da garra ajustada para: {clawForce:P0}");
-    }
-
-    [Header("Captura Realista")]
-    [SerializeField] private float captureRadius = 0.78f;
-    [SerializeField] private float maxHorizontalAlignDistance = 0.65f;
-    [SerializeField] private float idealVerticalOffset = -0.22f;
-    [SerializeField] private float verticalTolerance = 0.55f;
-    [SerializeField] private LayerMask prizeLayer;
-
-    [Header("Grip")]
-    [SerializeField, Range(0.3f, 2.0f)] private float baseGripForce = 1.30f;
-    [SerializeField] private float gripLossPerSecondWhileMoving = 0.035f;
-    [SerializeField] private float gripLossPerSwayDegree = 0.003f;
-
-    private float currentGripForce;
-    private Prize currentHeldPrize;
-    private float slipTimer;
-    private bool isSlipping;
-
-    public struct CaptureEvaluation
-    {
-        public Prize prize;
-        public float score;
-        public float horizontalAlign;
-        public float verticalProximity;
-        public float stability;
-        public bool isValid;
     }
 
     [Header("Arraste o Urso (Prefab) para cá no Inspector (Opcional):")]
@@ -81,6 +54,8 @@ public class ClawController : MonoBehaviour
     private Vector2 swayVelocity;
     private bool prizeBoardBuilt;
 
+    // Capacidade visual de uma máquina de shopping. O volume fica distribuído em
+    // quatro camadas para parecer um monte, não uma estante de personagens.
     private const int INITIAL_BOARD_COUNT = 72;
     private const float PRIZE_FLOOR_Y = -1.325f;
     private const float PRIZE_AREA_HALF_EXTENT = 1.38f;
@@ -117,8 +92,9 @@ public class ClawController : MonoBehaviour
 
         ConfigurarRastroLuminoso();
 
-        // A UI é inicializada pelo bootstrap da sessão.
+                // A UI é inicializada pelo bootstrap da sessão.
         // O controlador da garra não deve destruir nem criar sistemas de apresentação.
+
     }
 
     private void OnDestroy()
@@ -133,12 +109,6 @@ public class ClawController : MonoBehaviour
     void Update()
     {
         AtualizarCabo();
-        UpdateClawSway();
-
-        if (currentHeldPrize != null)
-        {
-            UpdateHeldPrizePhysics();
-        }
 
         // Se a garra está no ciclo de descida/captura/retorno à calha, bloqueia comandos manuais
         if (isExecutingCycle) return;
@@ -172,21 +142,14 @@ public class ClawController : MonoBehaviour
         }
 
         if (space) AcionarGarra();
-    }
 
-    private void LateUpdate()
-    {
-        Prize prizeToTrack = currentHeldPrize != null ? currentHeldPrize : (premioAgarrado != null ? premioAgarrado.GetComponent<Prize>() : null);
-        if (prizeToTrack == null || (prizeToTrack.State != PrizeState.Attached && prizeToTrack.State != PrizeState.Slipping)) return;
-        Transform anchor = carrySocket != null ? carrySocket : clawVisualContainer;
-        if (anchor != null)
-        {
-            prizeToTrack.transform.SetPositionAndRotation(anchor.position, anchor.rotation);
-        }
+        UpdateClawSway();
+        AtualizarCabo();
     }
 
     private void UpdateClawSway()
     {
+        if (clawVisualContainer == null) return;
         float dt = Time.deltaTime;
         if (dt <= 0.0001f) return;
 
@@ -229,24 +192,13 @@ public class ClawController : MonoBehaviour
         GameSession.Instance?.SetState(GameState.Capturing);
         OnClawStateChanged?.Invoke(true);
 
-        // 1. FASE DE DESCIDA: desce continuamente até mergulhar fundo nas pelúcias (-0.92f)
-        float targetY = -0.92f;
-        while (transform.position.y > targetY + 0.02f)
+        // 1. FASE DE DESCIDA: desce continuamente até mergulhar nas pelúcias (-0.80f)
+        float targetY = -0.80f;
+        while (transform.position.y > targetY + 0.03f)
         {
-            // Se detectar prêmio abaixo da garra quando já estiver baixo, envolve e fecha
-            if (transform.position.y <= -0.80f && Physics.CheckSphere(transform.position + Vector3.down * 0.35f, 0.28f, prizeLayer))
-            {
-                transform.position = Vector3.MoveTowards(transform.position, 
-                    new Vector3(transform.position.x, Mathf.Max(targetY, transform.position.y - 0.06f), transform.position.z), 
-                    2.0f * Time.deltaTime);
-                AtualizarCabo();
-                yield return new WaitForSeconds(0.08f);
-                break;
-            }
-
             transform.position = Vector3.MoveTowards(transform.position, 
                 new Vector3(transform.position.x, targetY, transform.position.z), 
-                3.0f * Time.deltaTime);
+                3.2f * Time.deltaTime);
 
             AtualizarCabo();
             yield return null;
@@ -288,7 +240,9 @@ public class ClawController : MonoBehaviour
         yield return new WaitForSeconds(0.35f);
 
         // 5. FASE DE ENTREGA FÍSICA
-        bool haviaPremio = currentHeldPrize != null || premioAgarrado != null;
+        // O prêmio permanece no carrySocket até a cabeça chegar à calha.
+        // A zona confirma a vitória somente quando o prêmio solto entra no trigger.
+        bool haviaPremio = premioAgarrado != null;
         if (haviaPremio) GameSession.Instance?.SetState(GameState.Delivering);
         AbrirGarraFisica();
         yield return new WaitForSeconds(1.25f);
@@ -322,181 +276,61 @@ public class ClawController : MonoBehaviour
             foreach (var d in dentes) d.localRotation = Quaternion.Euler(0, d.localEulerAngles.y, 10f);
         }
 
-        TryGrabRealistic();
-    }
+        AudioFeedbackController.Instance?.PlayClank();
+        GameJuice.Instance?.ScreenShake(0.15f, 0.1f);
+        GameJuice.Instance?.HapticsLight();
 
-    private CaptureEvaluation EvaluateBestCandidate()
-    {
-        CaptureEvaluation best = new CaptureEvaluation { score = -1f, isValid = false };
-
-        if (prizeLayer.value == 0)
+        Prize candidate = FindBestCaptureCandidate();
+        bool grabSuccess = false;
+        if (candidate != null)
         {
-            int pLayer = LayerMask.NameToLayer("Prize");
-            if (pLayer != -1) prizeLayer = 1 << pLayer;
-            else prizeLayer = ~0;
-        }
+            premioAgarrado = candidate.gameObject;
+            candidate.Attach(carrySocket != null ? carrySocket : clawVisualContainer != null ? clawVisualContainer : transform);
+            grabSuccess = true;
 
-        Vector3 origin = transform.position + Vector3.down * 0.35f;
-        Collider[] hits = Physics.OverlapSphere(origin, captureRadius, prizeLayer);
-        
-        if (hits == null || hits.Length == 0) return best;
-
-        Vector3 clawPos = transform.position;
-        float clawSpeed = clawVelocity.magnitude;
-
-        System.Collections.Generic.HashSet<Prize> evaluated = new System.Collections.Generic.HashSet<Prize>();
-
-        foreach (var col in hits)
-        {
-            Prize prize = col.GetComponentInParent<Prize>();
-            if (prize == null || evaluated.Contains(prize) || prize.State == PrizeState.Delivered || prize.State == PrizeState.Attached || prize.Body == null) continue;
-            evaluated.Add(prize);
-
-            Vector3 prizePos = prize.transform.position;
-
-            float horizDist = Vector2.Distance(
-                new Vector2(clawPos.x, clawPos.z),
-                new Vector2(prizePos.x, prizePos.z)
-            );
-            float horizontalAlign = 1f - Mathf.Clamp01(horizDist / maxHorizontalAlignDistance);
-
-            float verticalDelta = Mathf.Abs((prizePos.y - clawPos.y) - idealVerticalOffset);
-            float verticalProximity = 1f - Mathf.Clamp01(verticalDelta / verticalTolerance);
-
-            float stability = 1f - Mathf.Clamp01(clawSpeed / 2.2f);
-
-            float score = (horizontalAlign * 0.60f) + (verticalProximity * 0.25f) + (stability * 0.15f);
-
-            if (score > best.score)
-            {
-                best.prize = prize;
-                best.score = score;
-                best.horizontalAlign = horizontalAlign;
-                best.verticalProximity = verticalProximity;
-                best.stability = stability;
-                best.isValid = score > 0.18f;
-            }
-        }
-
-        return best;
-    }
-
-    private void TryGrabRealistic()
-    {
-        CaptureEvaluation eval = EvaluateBestCandidate();
-
-        if (!eval.isValid || eval.prize == null)
-        {
-            currentHeldPrize = null;
-            premioAgarrado = null;
-            OnGrabAttempt?.Invoke(false);
-            AudioFeedbackController.Instance?.PlayClank();
-            GameJuice.Instance?.HapticsLight();
-            if (eval.score > 0.10f) AudioFeedbackController.Instance?.PlayNearMiss();
-            return;
-        }
-
-        currentGripForce = baseGripForce * clawForce * Mathf.Lerp(0.75f, 1.20f, eval.score);
-        currentHeldPrize = eval.prize;
-        premioAgarrado = currentHeldPrize.gameObject;
-
-        Transform anchor = carrySocket != null ? carrySocket : (clawVisualContainer != null ? clawVisualContainer : transform);
-        currentHeldPrize.Attach(
-            anchor,
-            eval.score,
-            currentGripForce
-        );
-
-        isSlipping = false;
-        slipTimer = 0f;
-
-        OnGrabAttempt?.Invoke(true);
-        AudioFeedbackController.Instance?.PlayGrabSuccess();
-        GameJuice.Instance?.HapticsMedium();
-        GameJuice.Instance?.ScreenShake(0.12f, 0.08f);
-        GameJuice.Instance?.PunchScale(currentHeldPrize.transform, 1.18f, 0.22f);
-        GameJuice.Instance?.PlaySparkles(transform.position);
-        SetTrailColorGrabbing();
-
-        // Câmera
-        ClawCameraController camCtrl = ClawCameraController.Instance != null ? ClawCameraController.Instance : FindFirstObjectByType<ClawCameraController>();
-        camCtrl?.Shake(0.11f, 0.13f);
-        camCtrl?.PunchFOV(0.7f);
-
-        Debug.Log($"[Claw] Captura firme qualidade {eval.score:P0} | Grip {currentGripForce:F2} | {currentHeldPrize.prizeId}");
-    }
-
-    private void UpdateHeldPrizePhysics()
-    {
-        if (currentHeldPrize == null || currentHeldPrize.State == PrizeState.Delivered) return;
-
-        float swayPenalty = currentSwayAngle.magnitude / Mathf.Max(0.01f, swayMaxAngle);
-        float movementPenalty = Mathf.Clamp01(clawVelocity.magnitude / 2.2f);
-
-        float gripLoss = (gripLossPerSecondWhileMoving * movementPenalty + 
-                          gripLossPerSwayDegree * currentSwayAngle.magnitude) * Time.deltaTime;
-
-        currentGripForce = Mathf.Max(0.05f, currentGripForce - gripLoss);
-
-        bool stillHolding = currentHeldPrize.IsGripSufficient(currentGripForce, swayPenalty, movementPenalty);
-
-        if (!stillHolding)
-        {
-            if (!isSlipping)
-            {
-                isSlipping = true;
-                currentHeldPrize.BeginSlip();
-                slipTimer = 0f;
-
-                AudioFeedbackController.Instance?.PlaySlipStart();
-                GameJuice.Instance?.HapticsSlip();
-                ClawCameraController camCtrl = ClawCameraController.Instance != null ? ClawCameraController.Instance : FindFirstObjectByType<ClawCameraController>();
-                camCtrl?.Shake(0.07f, 0.45f);
-
-                Debug.Log("[Claw] Prêmio começou a escorregar!");
-            }
-
-            slipTimer += Time.deltaTime;
-
-            if (slipTimer > 1.0f)
-            {
-                ReleasePrizeWithPhysics();
-            }
+            GameJuice.Instance?.PunchScale(premioAgarrado.transform, 1.25f, 0.25f);
+            GameJuice.Instance?.PlaySparkles(transform.position);
+            GameJuice.Instance?.Haptics();
+            SetTrailColorGrabbing();
+            Debug.Log($"[ClawController] Pelúcia agarrada com sucesso: {candidate.prizeId}!");
         }
         else
         {
-            isSlipping = false;
-            slipTimer = 0f;
+            Debug.Log("[ClawController] Nenhuma pelúcia sob a garra.");
         }
+
+        OnGrabAttempt?.Invoke(grabSuccess);
     }
 
-    private void ReleasePrizeWithPhysics()
+    private Prize FindBestCaptureCandidate()
     {
-        if (currentHeldPrize == null) return;
+        // Encontra o prêmio mais próximo da posição horizontal X/Z da garra
+        Prize[] allPrizes = FindObjectsByType<Prize>(FindObjectsSortMode.None);
+        Prize best = null;
+        float bestHorizDist = 0.52f;
+        float captureY = transform.position.y;
+        float bestScore = float.MaxValue;
 
-        Prize p = currentHeldPrize;
-        currentHeldPrize = null;
-        premioAgarrado = null;
-        isSlipping = false;
-        slipTimer = 0f;
-
-        p.Detach();
-
-        if (p.Body != null)
+        foreach (var prize in allPrizes)
         {
-            Vector3 slipDir = (Random.insideUnitSphere + Vector3.down * 1.4f).normalized;
-            p.Body.AddForce(slipDir * 1.8f, ForceMode.Impulse);
-            p.Body.AddTorque(Random.insideUnitSphere * 2.5f, ForceMode.Impulse);
+            if (prize == null || prize.State != PrizeState.InPile || prize.Body == null) continue;
+
+            float horizDist = Vector2.Distance(
+                new Vector2(prize.transform.position.x, prize.transform.position.z),
+                new Vector2(transform.position.x, transform.position.z)
+            );
+            float verticalDist = Mathf.Abs(prize.transform.position.y - captureY);
+            if (horizDist > bestHorizDist || verticalDist > 0.58f) continue;
+
+            // Prioriza o centro da garra e o contato vertical mais próximo.
+            float score = horizDist * 1.6f + verticalDist;
+            if (score < bestScore)
+            {
+                bestScore = score;
+                best = prize;
+            }
         }
-
-        AudioFeedbackController.Instance?.PlayDropThud();
-        GameJuice.Instance?.HapticsHeavy();
-        GameJuice.Instance?.ScreenShake(0.18f, 0.12f);
-        ClawCameraController camCtrl = ClawCameraController.Instance != null ? ClawCameraController.Instance : FindFirstObjectByType<ClawCameraController>();
-        camCtrl?.Shake(0.17f, 0.2f);
-        SetTrailColorDefault();
-
-        Debug.Log("[Claw] Prêmio escorregou e caiu.");
+        return best;
     }
 
     private void AbrirGarraFisica()
@@ -509,36 +343,14 @@ public class ClawController : MonoBehaviour
 
         SetTrailColorDefault();
 
-        if (currentHeldPrize != null)
-        {
-            Prize p = currentHeldPrize;
-            currentHeldPrize = null;
-            premioAgarrado = null;
-            isSlipping = false;
-            slipTimer = 0f;
-
-            p.MarkDelivered();
-            if (GameSession.Instance != null)
-            {
-                GameSession.Instance.RegisterPrizeDelivered(p);
-            }
-
-            AudioFeedbackController.Instance?.PlayDeliverySuccess();
-            GameJuice.Instance?.HapticsSuccess();
-            GameJuice.Instance?.ScreenShake(0.12f, 0.08f);
-
-            Destroy(p.gameObject, 1.5f);
-        }
-        else if (premioAgarrado != null)
+        if (premioAgarrado != null)
         {
             Prize p = premioAgarrado.GetComponent<Prize>();
-            if (p != null)
-            {
-                p.MarkDelivered();
-                if (GameSession.Instance != null) GameSession.Instance.RegisterPrizeDelivered(p);
-                Destroy(p.gameObject, 1.5f);
-            }
+            if (p != null) p.Detach();
             premioAgarrado = null;
+
+            AudioFeedbackController.Instance?.PlayThud();
+            GameJuice.Instance?.ScreenShake(0.1f, 0.05f);
         }
     }
 
@@ -565,19 +377,12 @@ public class ClawController : MonoBehaviour
         SetTrailColorDefault();
         OnClawStateChanged?.Invoke(false);
         
-        if (currentHeldPrize != null)
-        {
-            currentHeldPrize.Detach();
-            currentHeldPrize = null;
-        }
         if (premioAgarrado != null)
         {
             Prize p = premioAgarrado.GetComponent<Prize>();
             if (p != null) p.Detach();
             premioAgarrado = null;
         }
-        isSlipping = false;
-        slipTimer = 0f;
     }
 
     // ====== CONSTRUÇÃO VISUAL DA GARRA MECÂNICA 3D ======
@@ -660,9 +465,8 @@ public class ClawController : MonoBehaviour
         // O prêmio capturado acompanha este transform durante subida e transporte.
         GameObject carrySocketObj = new GameObject("CarrySocket_Premio");
         carrySocketObj.transform.SetParent(clawVisualContainer, false);
-        // Centro físico entre as pontas dos dentes; o prêmio não fica preso na carcaça.
-        carrySocketObj.transform.localPosition = new Vector3(0f, -0.42f, 0f);
-        carrySocketObj.transform.localRotation = Quaternion.Euler(0f, 180f, 0f);
+        carrySocketObj.transform.localPosition = new Vector3(0f, -0.48f, 0f);
+        carrySocketObj.transform.localRotation = Quaternion.identity;
         carrySocket = carrySocketObj.transform;
 
         // 2. OS 3 DENTES ARTICULADOS COM PISTÕES E PONTAS EMBORRACHADAS
@@ -959,9 +763,6 @@ public class ClawController : MonoBehaviour
         GameObject instance = new GameObject($"Pelucia_{definition.resourceName}_{definition.rarity}_{index}");
         instance.transform.SetParent(prizePileRoot, false);
         instance.transform.SetPositionAndRotation(position, rotation);
-
-        int prizeLayerIdx = LayerMask.NameToLayer("Prize");
-        if (prizeLayerIdx != -1) instance.layer = prizeLayerIdx;
 
         GameObject visualRoot = Instantiate(prefab, instance.transform, false);
         visualRoot.name = "Visual";

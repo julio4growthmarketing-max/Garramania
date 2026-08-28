@@ -55,6 +55,15 @@ public class ClawCameraController : MonoBehaviour
     public float maxShakeTranslation = 0.35f;
     public float maxShakeRotation = 3.5f;
 
+    [Header("Direct Shake & FOV Punch")]
+    public float normalFOV = 55f;
+    public float punchFOV = 51f;
+    private float directShakeIntensity = 0.08f;
+    private float directShakeDuration = 0.15f;
+    private float directShakeTimer = 0f;
+    private Coroutine fovPunchCoroutine;
+    private float fovPunchOffset = 0f;
+
     private Camera cam;
     private float trauma = 0f;
     private Vector3 currentSmoothPos;
@@ -178,6 +187,53 @@ public class ClawCameraController : MonoBehaviour
     public void AddTrauma(float amount)
     {
         trauma = Mathf.Clamp01(trauma + amount);
+    }
+
+    /// <summary>
+    /// Tremor de câmera direto com intensidade e duração específicas
+    /// </summary>
+    public void Shake(float intensity, float duration)
+    {
+        directShakeIntensity = intensity;
+        directShakeDuration = Mathf.Max(0.01f, duration);
+        directShakeTimer = directShakeDuration;
+        AddTrauma(intensity * 1.8f);
+    }
+
+    /// <summary>
+    /// Efeito visual de impacto no campo de visão (Punch FOV)
+    /// </summary>
+    public void PunchFOV(float intensity = 1f)
+    {
+        if (fovPunchCoroutine != null) StopCoroutine(fovPunchCoroutine);
+        fovPunchCoroutine = StartCoroutine(FOVPunchRoutine(intensity));
+    }
+
+    private System.Collections.IEnumerator FOVPunchRoutine(float intensity)
+    {
+        if (cam == null) yield break;
+
+        float start = cam.fieldOfView;
+        float target = normalFOV - (normalFOV - punchFOV) * intensity;
+        float t = 0f;
+
+        while (t < 1f)
+        {
+            t += Time.unscaledDeltaTime * 8f;
+            fovPunchOffset = Mathf.Lerp(0f, target - normalFOV, t);
+            yield return null;
+        }
+
+        t = 0f;
+        while (t < 1f)
+        {
+            t += Time.unscaledDeltaTime * 4f;
+            fovPunchOffset = Mathf.Lerp(target - normalFOV, 0f, t);
+            yield return null;
+        }
+
+        fovPunchOffset = 0f;
+        fovPunchCoroutine = null;
     }
 
     private void HandlePeekInput()
@@ -306,7 +362,16 @@ public class ClawCameraController : MonoBehaviour
         currentSmoothPos = Vector3.Lerp(currentSmoothPos, targetPos, dt * followDamping);
         currentSmoothRot = Quaternion.Slerp(currentSmoothRot, Quaternion.Euler(targetEuler), dt * followDamping);
         currentFOV = Mathf.Lerp(currentFOV, targetFOV, dt * zoomSpeed);
-        cam.fieldOfView = currentFOV;
+        cam.fieldOfView = currentFOV + fovPunchOffset;
+
+        // Direct Shake timer calculation
+        Vector3 directShakeOffset = Vector3.zero;
+        if (directShakeTimer > 0f)
+        {
+            directShakeTimer -= dt;
+            float strength = directShakeIntensity * (directShakeTimer / directShakeDuration);
+            directShakeOffset = Random.insideUnitSphere * strength;
+        }
 
         // 5. SHAKE COM TRAUMA QUADRÁTICO
         if (trauma > 0f)
@@ -323,12 +388,12 @@ public class ClawCameraController : MonoBehaviour
             float rotYaw = (Mathf.PerlinNoise(seedYaw, time) - 0.5f) * 2f * maxShakeRotation * shake;
             float rotRoll = (Mathf.PerlinNoise(seedRoll, time) - 0.5f) * 2f * (maxShakeRotation * 1.5f) * shake;
 
-            transform.position = currentSmoothPos + new Vector3(offsetX, offsetY, offsetZ);
+            transform.position = currentSmoothPos + new Vector3(offsetX, offsetY, offsetZ) + directShakeOffset;
             transform.rotation = currentSmoothRot * Quaternion.Euler(rotPitch, rotYaw, rotRoll);
         }
         else
         {
-            transform.position = currentSmoothPos;
+            transform.position = currentSmoothPos + directShakeOffset;
             transform.rotation = currentSmoothRot;
         }
     }

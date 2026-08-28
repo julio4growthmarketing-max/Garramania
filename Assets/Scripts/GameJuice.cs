@@ -119,13 +119,93 @@ public class GameJuice : MonoBehaviour
 #endif
     }
 
-    /// <summary>Vibração leve (mais curta que Haptics padrão).</summary>
+    /// <summary>Vibração leve.</summary>
     public void HapticsLight()
     {
 #if UNITY_ANDROID || UNITY_IOS
-        // No Unity padrão, Handheld.Vibrate() é o único método disponível.
-        // Para vibração curta, usamos um pulse rápido.
         Handheld.Vibrate();
+#endif
+    }
+
+    /// <summary>Vibração média (duplo pulso).</summary>
+    public void HapticsMedium()
+    {
+#if UNITY_ANDROID || UNITY_IOS
+        StartCoroutine(DoublePulse(0.04f, 0.06f));
+#endif
+    }
+
+    /// <summary>Vibração pesada (triplo pulso forte).</summary>
+    public void HapticsHeavy()
+    {
+#if UNITY_ANDROID || UNITY_IOS
+        StartCoroutine(HeavyPulse());
+#endif
+    }
+
+    /// <summary>Vibração de escorregamento mecânico (5 pulsos cadenciados gerando alta tensão).</summary>
+    public void HapticsSlip()
+    {
+#if UNITY_ANDROID || UNITY_IOS
+        StartCoroutine(SlipPulsePattern());
+#endif
+    }
+
+    /// <summary>Vibração triunfal de sucesso.</summary>
+    public void HapticsSuccess()
+    {
+#if UNITY_ANDROID || UNITY_IOS
+        StartCoroutine(SuccessPattern());
+#endif
+    }
+
+    private IEnumerator DoublePulse(float duration, float gap)
+    {
+#if UNITY_ANDROID || UNITY_IOS
+        Handheld.Vibrate();
+        yield return new WaitForSecondsRealtime(gap);
+        Handheld.Vibrate();
+#else
+        yield break;
+#endif
+    }
+
+    private IEnumerator HeavyPulse()
+    {
+#if UNITY_ANDROID || UNITY_IOS
+        Handheld.Vibrate();
+        yield return new WaitForSecondsRealtime(0.05f);
+        Handheld.Vibrate();
+        yield return new WaitForSecondsRealtime(0.04f);
+        Handheld.Vibrate();
+#else
+        yield break;
+#endif
+    }
+
+    private IEnumerator SlipPulsePattern()
+    {
+#if UNITY_ANDROID || UNITY_IOS
+        for (int i = 0; i < 5; i++)
+        {
+            Handheld.Vibrate();
+            yield return new WaitForSecondsRealtime(0.07f + i * 0.015f);
+        }
+#else
+        yield break;
+#endif
+    }
+
+    private IEnumerator SuccessPattern()
+    {
+#if UNITY_ANDROID || UNITY_IOS
+        Handheld.Vibrate();
+        yield return new WaitForSecondsRealtime(0.08f);
+        Handheld.Vibrate();
+        yield return new WaitForSecondsRealtime(0.05f);
+        Handheld.Vibrate();
+#else
+        yield break;
 #endif
     }
 
