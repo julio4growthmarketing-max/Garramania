@@ -127,7 +127,11 @@ public class GameSession : MonoBehaviour
             clawController = FindFirstObjectByType<ClawController>();
         }
 
-        // Auto-criar sistemas de Juice e UI se não existirem
+        // Auto-criar sistemas de Juice, Coleção e UI se não existirem
+        if (FindFirstObjectByType<CollectionManager>() == null)
+        {
+            new GameObject("CollectionManager").AddComponent<CollectionManager>();
+        }
         if (FindFirstObjectByType<AudioFeedbackController>() == null)
         {
             new GameObject("AudioFeedbackController").AddComponent<AudioFeedbackController>();
