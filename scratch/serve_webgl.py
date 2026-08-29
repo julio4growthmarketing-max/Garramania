@@ -25,6 +25,6 @@ class UnityWebGLHandler(http.server.SimpleHTTPRequestHandler):
 
 if __name__ == "__main__":
     os.chdir(DIRECTORY)
-    with socketserver.TCPServer(("127.0.0.1", PORT), UnityWebGLHandler) as httpd:
-        print(f"Serving Unity WebGL from {DIRECTORY} at http://localhost:{PORT}")
+    with socketserver.TCPServer(("0.0.0.0", PORT), UnityWebGLHandler) as httpd:
+        print(f"Serving Unity WebGL from {DIRECTORY} at http://0.0.0.0:{PORT}")
         httpd.serve_forever()
