@@ -27,6 +27,15 @@ public sealed class SafeAreaFitter : MonoBehaviour
         lastSafeArea = safeArea;
         lastScreenSize = new Vector2Int(Screen.width, Screen.height);
 
+        if (safeArea.width <= 0 || safeArea.height <= 0)
+        {
+            rectTransform.anchorMin = Vector2.zero;
+            rectTransform.anchorMax = Vector2.one;
+            rectTransform.offsetMin = Vector2.zero;
+            rectTransform.offsetMax = Vector2.zero;
+            return;
+        }
+
         Vector2 min = safeArea.position;
         Vector2 max = safeArea.position + safeArea.size;
         min.x /= Mathf.Max(1, Screen.width);

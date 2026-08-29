@@ -374,7 +374,7 @@ public class GameJuice : MonoBehaviour
         colorOverLifetime.color = grad;
 
         var renderer = confettiObj.GetComponent<ParticleSystemRenderer>();
-        renderer.material = new Material(Shader.Find("Universal Render Pipeline/Particles/Unlit"));
+        renderer.material = CreateSafeParticleMaterial();
         renderer.material.color = Color.white;
 
         confettiPS.Stop();
@@ -415,12 +415,22 @@ public class GameJuice : MonoBehaviour
         sizeOverLife.size = new ParticleSystem.MinMaxCurve(1f, sizeCurve);
 
         var rendSpark = sparkObj.GetComponent<ParticleSystemRenderer>();
-        rendSpark.material = new Material(Shader.Find("Universal Render Pipeline/Particles/Unlit"));
+        rendSpark.material = CreateSafeParticleMaterial();
         rendSpark.material.color = new Color(1f, 0.95f, 0.5f);
         rendSpark.material.EnableKeyword("_EMISSION");
         rendSpark.material.SetColor("_EmissionColor", new Color(1f, 0.9f, 0.3f) * 3f);
 
         sparklePS.Stop();
+    }
+
+    private Material CreateSafeParticleMaterial()
+    {
+        Shader s = Shader.Find("Universal Render Pipeline/Particles/Unlit");
+        if (s == null) s = Shader.Find("Universal Render Pipeline/Lit");
+        if (s == null) s = Shader.Find("Universal Render Pipeline/Unlit");
+        if (s == null) s = Shader.Find("Sprites/Default");
+        if (s == null) s = Shader.Find("Standard");
+        return s != null ? new Material(s) : new Material(Shader.Find("Hidden/InternalErrorShader"));
     }
 
     void CreateFlashOverlay()

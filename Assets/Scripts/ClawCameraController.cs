@@ -308,6 +308,16 @@ public class ClawCameraController : MonoBehaviour
         Vector3 targetEuler = baseRot;
         float targetFOV = defaultFOV;
 
+        // Adaptação automática de enquadramento para tela vertical (Mobile Portrait)
+        float aspect = (float)Screen.width / Mathf.Max(1, Screen.height);
+        if (aspect < 1.0f)
+        {
+            float portraitFactor = Mathf.Clamp01((1.0f - aspect) / 0.55f);
+            targetPos.z -= Mathf.Lerp(0f, 1.25f, portraitFactor);
+            targetPos.y += Mathf.Lerp(0f, 0.40f, portraitFactor);
+            targetFOV = Mathf.Lerp(defaultFOV, 78f, portraitFactor);
+        }
+
         // 2. ESPIADA DE PRIMEIRA PESSOA (LEAN)
         float dt = Time.unscaledDeltaTime;
         currentLean = Mathf.Lerp(currentLean, targetLean, dt * 7.5f);

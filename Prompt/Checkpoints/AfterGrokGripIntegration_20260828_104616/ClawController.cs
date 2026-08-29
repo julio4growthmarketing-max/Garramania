@@ -311,13 +311,9 @@ public class ClawController : MonoBehaviour
         }
 
         isExecutingCycle = false;
-        if (GameSession.Instance != null && GameSession.Instance.CurrentState != GameState.GameOver)
+        if (GameSession.Instance != null && GameSession.Instance.CurrentState != GameState.Delivering)
         {
             GameSession.Instance.SetState(GameState.Playing);
-        }
-        if (InputRouter.Instance != null && (GameSession.Instance == null || GameSession.Instance.CurrentState == GameState.Playing))
-        {
-            InputRouter.Instance.SetBlocked(false);
         }
         OnClawStateChanged?.Invoke(false);
     }
@@ -561,23 +557,16 @@ public class ClawController : MonoBehaviour
         Prize p = currentHeldPrize != null ? currentHeldPrize : (premioAgarrado != null ? premioAgarrado.GetComponent<Prize>() : null);
         if (p != null)
         {
+            // A garra apenas solta. A PrizeDeliveryZone confirma a vitória quando
+            // o Rigidbody entrar fisicamente na calha.
             currentHeldPrize = null;
             premioAgarrado = null;
             isSlipping = false;
             slipTimer = 0f;
-
-            // Marca o prêmio como entregue e registra a vitória na GameSession
-            p.MarkDelivered();
-            if (GameSession.Instance != null)
-            {
-                GameSession.Instance.RegisterPrizeDelivered(p);
-            }
-
-            AudioFeedbackController.Instance?.PlayDeliverySuccess();
-            GameJuice.Instance?.HapticsSuccess();
-            GameJuice.Instance?.ScreenShake(0.12f, 0.08f);
-
-            Destroy(p.gameObject, 2.0f);
+            p.Detach();
+            AudioFeedbackController.Instance?.PlayDropThud();
+            GameJuice.Instance?.HapticsHeavy();
+            GameJuice.Instance?.ScreenShake(0.10f, 0.07f);
         }
     }
 
@@ -1078,11 +1067,7 @@ public class ClawController : MonoBehaviour
         trailRenderer.minVertexDistance = 0.02f;
         trailRenderer.autodestruct = false;
 
-        Shader sTrail = Shader.Find("Universal Render Pipeline/Particles/Unlit") 
-                     ?? Shader.Find("Universal Render Pipeline/Lit") 
-                     ?? Shader.Find("Sprites/Default") 
-                     ?? Shader.Find("Standard");
-        Material mTrail = new Material(sTrail != null ? sTrail : Shader.Find("Hidden/InternalErrorShader"));
+        Material mTrail = new Material(Shader.Find("Universal Render Pipeline/Particles/Unlit"));
         mTrail.color = new Color(0f, 0.95f, 1f, 0.95f);
         mTrail.EnableKeyword("_EMISSION");
         mTrail.SetColor("_EmissionColor", new Color(0f, 0.95f, 1f) * 3.5f);
