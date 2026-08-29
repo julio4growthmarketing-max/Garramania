@@ -19,7 +19,7 @@
 /[Oo]bj/
 /[Bb]uild/
 /[Bb]uilds/
-/[Bb]uild_Web/
+Build_Web/*_BurstDebugInformation_DoNotShip/
 /[Dd]ata/
 /[Ll]ogs/
 /[Uu]ser[Ss]ettings/
