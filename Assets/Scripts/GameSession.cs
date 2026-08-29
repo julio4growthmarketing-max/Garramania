@@ -127,10 +127,18 @@ public class GameSession : MonoBehaviour
             clawController = FindFirstObjectByType<ClawController>();
         }
 
-        // Auto-criar sistemas de Juice, Coleção e UI se não existirem
+        // Auto-criar sistemas de Juice, Coleção, Economia, Luz e UI se não existirem
         if (FindFirstObjectByType<CollectionManager>() == null)
         {
             new GameObject("CollectionManager").AddComponent<CollectionManager>();
+        }
+        if (FindFirstObjectByType<PlayerEconomyManager>() == null)
+        {
+            new GameObject("PlayerEconomyManager").AddComponent<PlayerEconomyManager>();
+        }
+        if (FindFirstObjectByType<CabinetLightingController>() == null)
+        {
+            new GameObject("CabinetLightingController").AddComponent<CabinetLightingController>();
         }
         if (FindFirstObjectByType<AudioFeedbackController>() == null)
         {
@@ -174,15 +182,22 @@ public class GameSession : MonoBehaviour
 
             OnTimeChanged?.Invoke(TimeRemaining, maxSessionTime);
 
-            // 🔊 JUICE: Warning nos últimos 5 segundos
-            if (TimeRemaining <= 5f && TimeRemaining > 0f)
+            // 🔊 JUICE: Tensão nos últimos 10 segundos & Warning nos últimos 5 segundos
+            if (TimeRemaining <= 10f && TimeRemaining > 0f)
             {
                 int currentSecond = Mathf.CeilToInt(TimeRemaining);
                 if (currentSecond != lastWarningSecond)
                 {
                     lastWarningSecond = currentSecond;
-                    AudioFeedbackController.Instance?.PlayWarning();
-                    GameJuice.Instance?.FlashScreen(new Color(1f, 0f, 0f, 0.25f), 0.15f);
+                    if (TimeRemaining <= 5f)
+                    {
+                        AudioFeedbackController.Instance?.PlayWarning();
+                        GameJuice.Instance?.FlashScreen(new Color(1f, 0f, 0f, 0.25f), 0.15f);
+                    }
+                    else
+                    {
+                        AudioFeedbackController.Instance?.PlayTensionTick();
+                    }
                 }
             }
 
@@ -228,6 +243,8 @@ public class GameSession : MonoBehaviour
         Credits--;
         SaveData();
         OnCreditsChanged?.Invoke(Credits);
+
+        PlayerEconomyManager.Instance?.RegisterGameStarted();
 
         TimeRemaining = maxSessionTime;
         lastWarningSecond = -1;

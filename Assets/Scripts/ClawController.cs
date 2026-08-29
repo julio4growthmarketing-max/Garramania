@@ -165,8 +165,16 @@ public class ClawController : MonoBehaviour
         }
 
         // Se a garra está no ciclo de descida/captura/retorno à calha, bloqueia comandos manuais
-        if (isExecutingCycle) return;
-        if (GameSession.Instance != null && !GameSession.Instance.CanMoveClaw()) return;
+        if (isExecutingCycle)
+        {
+            AudioFeedbackController.Instance?.SetMotorMoving(false);
+            return;
+        }
+        if (GameSession.Instance != null && !GameSession.Instance.CanMoveClaw())
+        {
+            AudioFeedbackController.Instance?.SetMotorMoving(false);
+            return;
+        }
 
         // Servo sound throttle
         if (servoSoundTimer > 0f) servoSoundTimer -= Time.deltaTime;
@@ -181,6 +189,9 @@ public class ClawController : MonoBehaviour
             space = InputRouter.Instance.ActionTriggered;
         }
 
+        bool isMoving = moveInput.sqrMagnitude > 0.01f;
+        AudioFeedbackController.Instance?.SetMotorMoving(isMoving);
+
         // Fliperama Autêntico: jogador manobra a garra no plano horizontal X / Z
         Vector3 nova = transform.position + new Vector3(moveInput.x, 0f, moveInput.z) * 2.8f * Time.deltaTime;
         nova.x = Mathf.Clamp(nova.x, -LIM_X, LIM_X);
@@ -189,7 +200,7 @@ public class ClawController : MonoBehaviour
         transform.position = nova;
 
         // 🔊 JUICE: Som do servo ao mover
-        if (moveInput.sqrMagnitude > 0.01f && servoSoundTimer <= 0f)
+        if (isMoving && servoSoundTimer <= 0f)
         {
             AudioFeedbackController.Instance?.PlayServo();
             servoSoundTimer = SERVO_SOUND_COOLDOWN;
@@ -250,6 +261,8 @@ public class ClawController : MonoBehaviour
     private System.Collections.IEnumerator RotinaCicloFliperama()
     {
         isExecutingCycle = true;
+        AudioFeedbackController.Instance?.SetMotorMoving(false);
+        CabinetLightingController.Instance?.SetDramaticFocus(true);
         GameSession.Instance?.SetState(GameState.Capturing);
         OnClawStateChanged?.Invoke(true);
 
@@ -345,6 +358,7 @@ public class ClawController : MonoBehaviour
         }
 
         isExecutingCycle = false;
+        CabinetLightingController.Instance?.SetDramaticFocus(false);
         if (GameSession.Instance != null && GameSession.Instance.CurrentState != GameState.GameOver)
         {
             GameSession.Instance.SetState(GameState.Playing);
@@ -380,6 +394,7 @@ public class ClawController : MonoBehaviour
     private void FecharGarraFisica()
     {
         isClosed = true;
+        AudioFeedbackController.Instance?.PlaySolenoidClamp();
         if (clawAnimationRoutine != null) StopCoroutine(clawAnimationRoutine);
         clawAnimationRoutine = StartCoroutine(AnimateClaw(0.0f, 0.35f));
 
@@ -491,6 +506,15 @@ public class ClawController : MonoBehaviour
         currentSolenoidVoltage = solenoidMaxVoltage;
         prizeMass = eval.prize.Body != null ? eval.prize.Body.mass : 1.8f;
         frictionCoeff = 0.85f;
+
+        if (PlayerEconomyManager.Instance != null && PlayerEconomyManager.Instance.IsGoldenClawActive)
+        {
+            eval.score = Mathf.Max(eval.score, 0.95f);
+            captureQuality = 1.0f;
+            frictionCoeff = 1.8f;
+            PlayerEconomyManager.Instance.ConsumeGoldenToken();
+            Debug.Log("[ClawController] 🌟 FICHA DOURADA ATIVA! Força magnética máxima calibrada!");
+        }
 
         currentGripForce = baseGripForce * clawForce * Mathf.Lerp(0.85f, 1.20f, eval.score);
         currentHeldPrize = eval.prize;
@@ -617,6 +641,7 @@ public class ClawController : MonoBehaviour
     private void AbrirGarraFisica()
     {
         isClosed = false;
+        AudioFeedbackController.Instance?.PlaySolenoidRelease();
         if (clawAnimationRoutine != null) StopCoroutine(clawAnimationRoutine);
         clawAnimationRoutine = StartCoroutine(AnimateClaw(1.0f, 0.35f));
 

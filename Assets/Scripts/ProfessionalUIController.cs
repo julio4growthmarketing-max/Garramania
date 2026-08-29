@@ -498,30 +498,56 @@ public sealed class ProfessionalUIController : MonoBehaviour
         Vector2 camMax = isP ? new Vector2(0.64f, 0.255f) : new Vector2(0.545f, 0.085f);
         GameObject camBtn = CreateArcadeButton(parent, "CamBtn", camMin, camMax, GlassPill, NeonGold, () => cameraController?.ToggleCameraAngle());
         cameraText = CreateText(camBtn.transform, "CamText", "CÂMERA", Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero, 13, NeonGold, TextAnchor.MiddleCenter, true);
-
         Vector2 pRightMin = isP ? new Vector2(0.68f, 0.205f) : new Vector2(0.555f, 0.035f);
         Vector2 pRightMax = isP ? new Vector2(0.96f, 0.255f) : new Vector2(0.62f, 0.085f);
         CreateArcadeButton(parent, "PeekRightBtn", pRightMin, pRightMax, GlassPill, NeonCyan, () => cameraController?.LeanRight(), "ESPIAR ►");
+
+        // 4. Botão Ficha Dourada (100% Força da Garra)
+        Vector2 goldMin = isP ? new Vector2(0.68f, 0.265f) : new Vector2(0.82f, 0.245f);
+        Vector2 goldMax = isP ? new Vector2(0.96f, 0.315f) : new Vector2(0.97f, 0.295f);
+        GameObject goldBtn = CreateArcadeButton(parent, "GoldenTokenBtn", goldMin, goldMax, GlassPill, NeonGold, () => {
+            if (PlayerEconomyManager.Instance != null)
+            {
+                bool active = PlayerEconomyManager.Instance.ToggleGoldenClaw();
+                if (actionButtonCore != null) actionButtonCore.color = active ? NeonGold : NeonMagenta;
+                if (actionText != null) actionText.text = active ? "AGARRAR ★" : "AGARRAR";
+            }
+        }, "★ OURO 100%");
     }
 
     private void BuildMenu(Transform parent)
     {
         bool isP = Screen.width < Screen.height;
-        Vector2 min = isP ? new Vector2(0.08f, 0.18f) : new Vector2(0.28f, 0.16f);
-        Vector2 max = isP ? new Vector2(0.92f, 0.82f) : new Vector2(0.72f, 0.84f);
+        Vector2 min = isP ? new Vector2(0.08f, 0.12f) : new Vector2(0.28f, 0.10f);
+        Vector2 max = isP ? new Vector2(0.92f, 0.88f) : new Vector2(0.72f, 0.90f);
 
         GameObject card = CreatePanel(parent, "MenuCard", GlassCard, min, max, Vector2.zero, Vector2.zero, true, GetRoundedRectSprite());
         CreatePanel(card.transform, "CardBorder", NeonGold * 0.4f, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero, false, GetRoundedRectSprite()).transform.SetAsFirstSibling();
 
-        CreateText(card.transform, "Logo", "GARRAMANIA", new Vector2(0.05f, 0.72f), new Vector2(0.95f, 0.88f), Vector2.zero, Vector2.zero, isP ? 42 : 46, NeonGold, TextAnchor.MiddleCenter, true);
-        CreateText(card.transform, "Subtitle", "ARCADE CLAW MACHINE • FLIPERAMA", new Vector2(0.05f, 0.62f), new Vector2(0.95f, 0.72f), Vector2.zero, Vector2.zero, 14, NeonCyan, TextAnchor.MiddleCenter, true);
-        CreateText(card.transform, "Instruction", "Mire a garra cromada sobre a pelúcia,\naperte o botão para descer e leve para a calha!", new Vector2(0.08f, 0.44f), new Vector2(0.92f, 0.58f), Vector2.zero, Vector2.zero, 16, Color.white, TextAnchor.MiddleCenter, false);
+        CreateText(card.transform, "Logo", "GARRAMANIA", new Vector2(0.05f, 0.74f), new Vector2(0.95f, 0.90f), Vector2.zero, Vector2.zero, isP ? 42 : 46, NeonGold, TextAnchor.MiddleCenter, true);
+        CreateText(card.transform, "Subtitle", "ARCADE CLAW MACHINE • FLIPERAMA", new Vector2(0.05f, 0.64f), new Vector2(0.95f, 0.74f), Vector2.zero, Vector2.zero, 14, NeonCyan, TextAnchor.MiddleCenter, true);
+        CreateText(card.transform, "Instruction", "Mire a garra cromada sobre a pelúcia,\naperte o botão para descer e leve para a calha!", new Vector2(0.08f, 0.48f), new Vector2(0.92f, 0.62f), Vector2.zero, Vector2.zero, 16, Color.white, TextAnchor.MiddleCenter, false);
 
         // Botão Play 3D Verde
-        CreateArcadeButton(card.transform, "PlayBtn", new Vector2(0.12f, 0.24f), new Vector2(0.88f, 0.40f), NeonGreen, Color.black, StartGame, "INICIAR JOGADA");
+        CreateArcadeButton(card.transform, "PlayBtn", new Vector2(0.12f, 0.32f), new Vector2(0.88f, 0.45f), NeonGreen, Color.black, StartGame, "INICIAR JOGADA");
+
+        // Botão Recompensa Diária (+3 Fichas)
+        CreateArcadeButton(card.transform, "DailyRewardBtn", new Vector2(0.12f, 0.18f), new Vector2(0.88f, 0.29f), GlassPill, NeonGold, () => {
+            if (PlayerEconomyManager.Instance != null)
+            {
+                if (PlayerEconomyManager.Instance.ClaimDailyReward())
+                {
+                    SetStatus("PARABÉNS! VOCÊ GANHOU +3 FICHAS GRÁTIS! 🪙", NeonGold);
+                }
+                else
+                {
+                    SetStatus("RECOMPENSA DIÁRIA JÁ RESGATADA HOJE!", NeonCyan);
+                }
+            }
+        }, "🎁 +3 FICHAS GRÁTIS");
 
         // Botão Álbum de Coleção
-        GameObject albumBtn = CreateArcadeButton(card.transform, "MenuAlbumBtn", new Vector2(0.12f, 0.08f), new Vector2(0.88f, 0.20f), GlassPill, NeonCyan, OpenAlbum);
+        GameObject albumBtn = CreateArcadeButton(card.transform, "MenuAlbumBtn", new Vector2(0.12f, 0.05f), new Vector2(0.88f, 0.15f), GlassPill, NeonCyan, OpenAlbum);
         menuAlbumButtonText = CreateText(albumBtn.transform, "MenuAlbumBtnText", "VER ÁLBUM (0/6)", Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero, 16, NeonCyan, TextAnchor.MiddleCenter, true);
     }
 
