@@ -7,6 +7,9 @@ public static class WebGLBuilder
     [MenuItem("GarraMania/Gerar Build WebGL Mobile")]
     public static void BuildWebGLMobile()
     {
+        Debug.Log("[GarraMania] Executando otimização para iOS e Mobile...");
+        MobileOptimizationTool.OptimizeForMobileAndIOS();
+
         Debug.Log("[GarraMania] Iniciando compilação do Build WebGL Mobile...");
         string[] scenes = new string[] { "Assets/Scenes/SampleScene.unity" };
         string buildPath = "Build_Web";
