@@ -9,6 +9,12 @@ public static class ArcadeLayout2Setup
     [MenuItem("GarraMania/1. Materializar Gabinete e Configurar Probes")]
     public static void SetupSceneAndProbes()
     {
+        if (EditorApplication.isPlaying)
+        {
+            EditorApplication.isPlaying = false;
+            Debug.LogWarning("[GarraMania] Saindo do Play Mode antes de materializar o gabinete...");
+        }
+
         Debug.Log("[GarraMania] Iniciando materialização do Gabinete e configuração de Probes para Layout 2...");
 
         // 1. Abrir a cena principal SampleScene
@@ -39,10 +45,10 @@ public static class ArcadeLayout2Setup
             Light dirLight = dirLightObj.GetComponent<Light>();
             if (dirLight != null)
             {
-                dirLight.lightmapBakeType = LightmapBakeType.Baked;
+                dirLight.lightmapBakeType = LightmapBakeType.Mixed;
                 dirLight.color = new Color(1f, 0.96f, 0.90f);
-                dirLight.intensity = 1.0f;
-                dirLight.shadows = LightShadows.None;
+                dirLight.intensity = 1.2f;
+                dirLight.shadows = LightShadows.Soft;
             }
         }
 

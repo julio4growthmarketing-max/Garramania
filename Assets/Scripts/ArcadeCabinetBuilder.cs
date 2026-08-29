@@ -253,19 +253,17 @@ public class ArcadeCabinetBuilder
         Cubo("Acrilico_Barreira_X", new Vector3(-1.8f, -1.58f, -1.22f), new Vector3(1.2f, 0.45f, 0.03f), mVidroAcrilico, rootCalha);
         Cubo("Acrilico_Barreira_Z", new Vector3(-1.22f, -1.58f, -1.8f), new Vector3(0.03f, 0.45f, 1.2f), mVidroAcrilico, rootCalha);
 
-        // Placa Indicadora Luminosa da Calha (SAÍDA DE PRÊMIOS / DROP ZONE)
-        Cubo("Placa_Sinalizadora_Calha", new Vector3(-1.8f, -1.25f, -1.22f), new Vector3(1.15f, 0.20f, 0.05f), mNeonGold, rootCalha);
-        Cubo("Seta_Neon_Calha", new Vector3(-1.8f, -1.40f, -1.22f), new Vector3(0.18f, 0.16f, 0.06f), mNeonCyan, rootCalha);
+        // Borda discreta da calha em Inox (sem bloco amarelo ofuscante)
+        Cubo("Moldura_Borda_Calha", new Vector3(-1.8f, -1.35f, -1.22f), new Vector3(1.15f, 0.06f, 0.05f), mAcoInox, rootCalha);
 
         // Portinhola de Coleta "PUSH" na parte inferior frontal
         Vector3 posPush = new Vector3(-1.8f, -2.48f, -2.67f);
         Cubo("Moldura_Saida_Premios", posPush, new Vector3(1.15f, 0.70f, 0.06f), mAcoInox, rootCalha);
         Cubo("Portinhola_PUSH", posPush + new Vector3(0, 0, -0.02f), new Vector3(0.95f, 0.52f, 0.03f), mVidroFume, rootCalha);
-        Cubo("Texto_PUSH_Inox", posPush + new Vector3(0, 0, -0.04f), new Vector3(0.40f, 0.12f, 0.01f), mNeonGold, rootCalha);
+        Cubo("Texto_PUSH_Inox", posPush + new Vector3(0, 0, -0.04f), new Vector3(0.40f, 0.12f, 0.01f), mAcoInox, rootCalha);
 
-        // Luz Interna e Spotlight da Calha (Brilha intensamente no duto de queda)
-        CriarLuz(new Vector3(-1.8f, -1.85f, -1.8f), new Color(1f, 0.9f, 0.5f), 4.5f, 3.2f, rootCalha);
-        CriarSpotlight(new Vector3(-1.8f, -1.15f, -1.8f), new Color(1f, 0.88f, 0.4f), 5f, 65f, 3.5f, rootCalha);
+        // Iluminação interna suave e sutil (sem ofuscar a visão do jogador)
+        CriarLuz(new Vector3(-1.8f, -1.85f, -1.8f), new Color(0.2f, 0.7f, 1.0f), 0.35f, 1.8f, rootCalha);
 
         // Trigger de Entrega de Prêmios
         GameObject zona = new GameObject("ZonaDeEntrega_Invisivel");

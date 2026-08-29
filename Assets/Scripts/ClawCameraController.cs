@@ -89,15 +89,17 @@ public class ClawCameraController : MonoBehaviour
         cam = GetComponent<Camera>();
         if (cam == null) cam = Camera.main;
 
-        // Configura posição de primeira pessoa
-        frontPosition = new Vector3(0f, 0.95f, -3.65f);
-        frontEuler = new Vector3(15f, 0f, 0f);
-        leftPosition = new Vector3(-3.65f, 0.95f, 0f);
-        leftEuler = new Vector3(15f, 90f, 0f);
-        rightPosition = new Vector3(3.65f, 0.95f, 0f);
-        rightEuler = new Vector3(15f, -90f, 0f);
-        defaultFOV = 52f;
-        tensionFOV = 44f;
+        // Configura posição de primeira pessoa estilo Arcade Real
+        frontPosition = new Vector3(0f, 0.65f, -5.20f);
+        frontEuler = new Vector3(4.5f, 0f, 0f);
+        leftPosition = new Vector3(-5.20f, 0.65f, 0f);
+        leftEuler = new Vector3(4.5f, 90f, 0f);
+        rightPosition = new Vector3(5.20f, 0.65f, 0f);
+        rightEuler = new Vector3(4.5f, -90f, 0f);
+        defaultFOV = 62f;
+        tensionFOV = 50f;
+        normalFOV = 62f;
+        punchFOV = 56f;
 
         if (cam != null)
         {
@@ -313,9 +315,9 @@ public class ClawCameraController : MonoBehaviour
         if (aspect < 1.0f)
         {
             float portraitFactor = Mathf.Clamp01((1.0f - aspect) / 0.55f);
-            targetPos.z -= Mathf.Lerp(0f, 1.25f, portraitFactor);
+            targetPos.z -= Mathf.Lerp(0f, 1.80f, portraitFactor);
             targetPos.y += Mathf.Lerp(0f, 0.40f, portraitFactor);
-            targetFOV = Mathf.Lerp(defaultFOV, 78f, portraitFactor);
+            targetFOV = Mathf.Lerp(defaultFOV, 82f, portraitFactor);
         }
 
         // 2. ESPIADA DE PRIMEIRA PESSOA (LEAN)

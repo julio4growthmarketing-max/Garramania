@@ -37,7 +37,6 @@ public class Prize : MonoBehaviour
     public void RefreshPhysicsReferences()
     {
         Body = GetComponent<Rigidbody>();
-        if (Body == null) Body = GetComponentInChildren<Rigidbody>();
         if (Body == null) Body = gameObject.AddComponent<Rigidbody>();
     }
 
@@ -103,16 +102,20 @@ public class Prize : MonoBehaviour
         }
 
         transform.SetParent(anchor, false);
-        if (anchor.name.Contains("Socket"))
+
+        // Compensa a escala do parent para NUNCA encolher o boneco (mantém escala 1.0 real no mundo)
+        Vector3 pScale = anchor.lossyScale;
+        if (pScale.x > 0.001f && pScale.y > 0.001f && pScale.z > 0.001f)
         {
-            transform.localPosition = Vector3.zero;
-            transform.localRotation = Quaternion.identity;
+            transform.localScale = new Vector3(1f / pScale.x, 1f / pScale.y, 1f / pScale.z);
         }
         else
         {
-            transform.localPosition = new Vector3(0f, -0.42f, 0f);
-            transform.localRotation = Quaternion.Euler(0f, 180f, 0f);
+            transform.localScale = Vector3.one;
         }
+
+        transform.localPosition = Vector3.zero;
+        transform.localRotation = Quaternion.Euler(0f, 180f, 0f);
     }
 
     /// <summary>
@@ -140,7 +143,8 @@ public class Prize : MonoBehaviour
             Body.useGravity = true;
             Body.WakeUp();
         }
-        transform.SetParent(null);
+        transform.SetParent(null, true);
+        transform.localScale = Vector3.one;
         StartCoroutine(CheckSettleRoutine());
     }
 
@@ -169,7 +173,8 @@ public class Prize : MonoBehaviour
             Body.useGravity = true;
             Body.WakeUp();
         }
-        transform.SetParent(null);
+        transform.SetParent(null, true);
+        transform.localScale = Vector3.one;
     }
 
     /// <summary>

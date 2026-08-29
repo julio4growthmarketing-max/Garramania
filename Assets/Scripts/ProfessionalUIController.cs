@@ -361,85 +361,86 @@ public sealed class ProfessionalUIController : MonoBehaviour
     private void BuildHud(Transform parent)
     {
         bool isPortrait = Screen.width < Screen.height;
-        Color barBg = new Color(0.02f, 0.04f, 0.08f, 0.55f);
+        Color barBg = new Color(0.02f, 0.04f, 0.08f, 0.45f);
 
         // Fichas (Canto Superior Esquerdo)
-        Vector2 credMin = isPortrait ? new Vector2(0.03f, 0.92f) : new Vector2(0.025f, 0.915f);
-        Vector2 credMax = isPortrait ? new Vector2(0.32f, 0.98f) : new Vector2(0.18f, 0.98f);
+        Vector2 credMin = isPortrait ? new Vector2(0.03f, 0.925f) : new Vector2(0.025f, 0.925f);
+        Vector2 credMax = isPortrait ? new Vector2(0.32f, 0.985f) : new Vector2(0.16f, 0.985f);
         GameObject credits = CreatePanel(parent, "Credits", barBg, credMin, credMax, Vector2.zero, Vector2.zero, true);
-        creditsText = CreateText(credits.transform, "CreditsText", "3 FICHAS", Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero, 18, NeonGold, TextAnchor.MiddleCenter, true);
+        creditsText = CreateText(credits.transform, "CreditsText", "3 FICHAS", Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero, 16, NeonGold, TextAnchor.MiddleCenter, true);
 
         // Timer Central Digital
-        Vector2 timeMin = isPortrait ? new Vector2(0.36f, 0.91f) : new Vector2(0.42f, 0.905f);
-        Vector2 timeMax = isPortrait ? new Vector2(0.64f, 0.985f) : new Vector2(0.58f, 0.985f);
+        Vector2 timeMin = isPortrait ? new Vector2(0.38f, 0.920f) : new Vector2(0.45f, 0.920f);
+        Vector2 timeMax = isPortrait ? new Vector2(0.62f, 0.985f) : new Vector2(0.55f, 0.985f);
         GameObject timer = CreatePanel(parent, "Timer", barBg, timeMin, timeMax, Vector2.zero, Vector2.zero, true);
-        timerFill = CreatePanel(timer.transform, "TimerFill", NeonCyan, new Vector2(0.04f, 0.12f), new Vector2(0.96f, 0.88f), Vector2.zero, Vector2.zero, false).GetComponent<Image>();
+        timerFill = CreatePanel(timer.transform, "TimerFill", NeonCyan, new Vector2(0.04f, 0.10f), new Vector2(0.96f, 0.90f), Vector2.zero, Vector2.zero, false).GetComponent<Image>();
         timerFillRect = timerFill.rectTransform;
         timerFill.type = Image.Type.Simple;
         CreatePanel(timer.transform, "TimerCore", new Color(0.01f, 0.02f, 0.04f, 0.85f), Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero, false).transform.SetAsFirstSibling();
-        timerText = CreateText(timer.transform, "TimerText", "45", new Vector2(0.05f, 0.05f), new Vector2(0.95f, 0.95f), Vector2.zero, Vector2.zero, 26, Color.white, TextAnchor.MiddleCenter, true);
+        timerText = CreateText(timer.transform, "TimerText", "45", new Vector2(0.05f, 0.05f), new Vector2(0.95f, 0.95f), Vector2.zero, Vector2.zero, 24, Color.white, TextAnchor.MiddleCenter, true);
 
         // Prêmios Coletados (Canto Superior Direito)
-        Vector2 przMin = isPortrait ? new Vector2(0.68f, 0.92f) : new Vector2(0.82f, 0.915f);
-        Vector2 przMax = isPortrait ? new Vector2(0.97f, 0.98f) : new Vector2(0.975f, 0.98f);
+        Vector2 przMin = isPortrait ? new Vector2(0.68f, 0.925f) : new Vector2(0.84f, 0.925f);
+        Vector2 przMax = isPortrait ? new Vector2(0.97f, 0.985f) : new Vector2(0.975f, 0.985f);
         GameObject prizes = CreatePanel(parent, "Prizes", barBg, przMin, przMax, Vector2.zero, Vector2.zero, true);
-        prizesText = CreateText(prizes.transform, "PrizesText", "0 PRÊMIOS", Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero, 18, NeonGreen, TextAnchor.MiddleCenter, true);
+        prizesText = CreateText(prizes.transform, "PrizesText", "0 PRÊMIOS", Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero, 16, NeonGreen, TextAnchor.MiddleCenter, true);
 
         // Status Discreto
-        Vector2 stMin = isPortrait ? new Vector2(0.06f, 0.84f) : new Vector2(0.28f, 0.85f);
-        Vector2 stMax = isPortrait ? new Vector2(0.94f, 0.89f) : new Vector2(0.72f, 0.90f);
-        statusText = CreateText(parent, "Status", "PRONTO PARA JOGAR", stMin, stMax, Vector2.zero, Vector2.zero, 14, NeonCyan, TextAnchor.MiddleCenter, false);
+        Vector2 stMin = isPortrait ? new Vector2(0.10f, 0.875f) : new Vector2(0.35f, 0.880f);
+        Vector2 stMax = isPortrait ? new Vector2(0.90f, 0.915f) : new Vector2(0.65f, 0.915f);
+        statusText = CreateText(parent, "Status", "PRONTO PARA JOGAR", stMin, stMax, Vector2.zero, Vector2.zero, 12, NeonCyan, TextAnchor.MiddleCenter, false);
     }
 
     private void BuildControls(Transform parent)
     {
         bool isPortrait = Screen.width < Screen.height;
-        Color joyBg = new Color(0.02f, 0.05f, 0.12f, 0.55f);
+        Color joyBg = new Color(0.02f, 0.04f, 0.08f, 0.35f);
 
-        Vector2 joyMin = isPortrait ? new Vector2(0.05f, 0.04f) : new Vector2(0.03f, 0.04f);
-        Vector2 joyMax = isPortrait ? new Vector2(0.44f, 0.22f) : new Vector2(0.24f, 0.29f);
+        // 1. Joystick Virtual Discreto (Canto Inferior Esquerdo)
+        Vector2 joyMin = isPortrait ? new Vector2(0.05f, 0.03f) : new Vector2(0.03f, 0.03f);
+        Vector2 joyMax = isPortrait ? new Vector2(0.38f, 0.18f) : new Vector2(0.18f, 0.23f);
         GameObject joystick = CreatePanel(parent, "VirtualJoystick", joyBg, joyMin, joyMax, Vector2.zero, Vector2.zero, true);
-        GameObject handle = CreatePanel(joystick.transform, "Handle", new Color(0f, 0.95f, 1f, 0.90f), new Vector2(0.30f, 0.30f), new Vector2(0.70f, 0.70f), Vector2.zero, Vector2.zero, true);
+        GameObject handle = CreatePanel(joystick.transform, "Handle", new Color(0f, 0.95f, 1f, 0.85f), new Vector2(0.28f, 0.28f), new Vector2(0.72f, 0.72f), Vector2.zero, Vector2.zero, true);
         handle.GetComponent<Image>().raycastTarget = false;
         VirtualJoystickView joystickView = joystick.AddComponent<VirtualJoystickView>();
-        joystickView.Configure(joystick.GetComponent<RectTransform>(), handle.GetComponent<RectTransform>(), isPortrait ? 65f : 70f);
-        CreateText(joystick.transform, "JoystickLabel", "JOYSTICK ARCADE", new Vector2(0.05f, 0.03f), new Vector2(0.95f, 0.18f), Vector2.zero, Vector2.zero, 12, new Color(1f, 1f, 1f, 0.90f), TextAnchor.MiddleCenter, false);
+        joystickView.Configure(joystick.GetComponent<RectTransform>(), handle.GetComponent<RectTransform>(), isPortrait ? 55f : 60f);
+        CreateText(joystick.transform, "JoystickLabel", "JOYSTICK", new Vector2(0.05f, 0.02f), new Vector2(0.95f, 0.20f), Vector2.zero, Vector2.zero, 11, new Color(1f, 1f, 1f, 0.75f), TextAnchor.MiddleCenter, false);
 
-        // 2. Botão Arcade Único de Ação (Canto Inferior Direito) - Padrão de Máquina Real
-        Vector2 actMin = isPortrait ? new Vector2(0.56f, 0.04f) : new Vector2(0.74f, 0.04f);
-        Vector2 actMax = isPortrait ? new Vector2(0.95f, 0.22f) : new Vector2(0.97f, 0.29f);
-        GameObject action = CreateButton(parent, "ActionButton", NeonMagenta, actMin, actMax);
+        // 2. Botão Arcade Único de Ação (Canto Inferior Direito)
+        Vector2 actMin = isPortrait ? new Vector2(0.62f, 0.03f) : new Vector2(0.82f, 0.03f);
+        Vector2 actMax = isPortrait ? new Vector2(0.95f, 0.18f) : new Vector2(0.97f, 0.23f);
+        GameObject action = CreateButton(parent, "ActionButton", new Color(0.95f, 0.10f, 0.45f, 0.90f), actMin, actMax);
         actionButton = action.GetComponent<Button>();
         actionButton.onClick.AddListener(() => InputRouter.Instance?.TriggerTouchAction());
-        actionText = CreateText(action.transform, "ActionText", "DESCER GARRA", new Vector2(0.04f, 0.44f), new Vector2(0.96f, 0.88f), Vector2.zero, Vector2.zero, isPortrait ? 22 : 26, Color.white, TextAnchor.MiddleCenter, true);
-        actionSubText = CreateText(action.transform, "ActionSubText", "CAPTURAR BICHINHO", new Vector2(0.04f, 0.12f), new Vector2(0.96f, 0.44f), Vector2.zero, Vector2.zero, 13, new Color(1f, 1f, 1f, 0.90f), TextAnchor.MiddleCenter, false);
+        actionText = CreateText(action.transform, "ActionText", "DESCER GARRA", new Vector2(0.04f, 0.44f), new Vector2(0.96f, 0.88f), Vector2.zero, Vector2.zero, isPortrait ? 20 : 22, Color.white, TextAnchor.MiddleCenter, true);
+        actionSubText = CreateText(action.transform, "ActionSubText", "CAPTURAR", new Vector2(0.04f, 0.12f), new Vector2(0.96f, 0.44f), Vector2.zero, Vector2.zero, 12, new Color(1f, 1f, 1f, 0.85f), TextAnchor.MiddleCenter, false);
 
-        // 3. Botões de Espiada Rápida (Peeking) e Câmera
-        Color peekBtnColor = new Color(0.03f, 0.08f, 0.16f, 0.65f);
-        Vector2 pLeftMin = isPortrait ? new Vector2(0.05f, 0.23f) : new Vector2(0.33f, 0.04f);
-        Vector2 pLeftMax = isPortrait ? new Vector2(0.31f, 0.28f) : new Vector2(0.46f, 0.12f);
+        // 3. Botões de Câmera e Espiada Flutuantes no Centro Inferior
+        Color peekBtnColor = new Color(0.02f, 0.05f, 0.12f, 0.50f);
+        Vector2 pLeftMin = isPortrait ? new Vector2(0.05f, 0.19f) : new Vector2(0.38f, 0.035f);
+        Vector2 pLeftMax = isPortrait ? new Vector2(0.32f, 0.24f) : new Vector2(0.445f, 0.085f);
         GameObject peekLeft = CreateButton(parent, "PeekLeftButton", peekBtnColor, pLeftMin, pLeftMax);
         peekLeft.GetComponent<Button>().onClick.AddListener(() => cameraController?.LeanLeft());
-        CreateText(peekLeft.transform, "PeekLeftText", "◄ ESPIAR", Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero, 13, NeonCyan, TextAnchor.MiddleCenter, true);
+        CreateText(peekLeft.transform, "PeekLeftText", "◄ ESPIAR", Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero, 12, NeonCyan, TextAnchor.MiddleCenter, true);
 
-        Vector2 camMin = isPortrait ? new Vector2(0.36f, 0.23f) : new Vector2(0.435f, 0.13f);
-        Vector2 camMax = isPortrait ? new Vector2(0.64f, 0.28f) : new Vector2(0.565f, 0.19f);
+        Vector2 camMin = isPortrait ? new Vector2(0.36f, 0.19f) : new Vector2(0.455f, 0.035f);
+        Vector2 camMax = isPortrait ? new Vector2(0.64f, 0.24f) : new Vector2(0.545f, 0.085f);
         GameObject camera = CreateButton(parent, "CameraButton", peekBtnColor, camMin, camMax);
         cameraButton = camera.GetComponent<Button>();
         cameraButton.onClick.AddListener(() => cameraController?.ToggleCameraAngle());
-        cameraText = CreateText(camera.transform, "CameraText", "CÂMERA", Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero, 13, NeonGold, TextAnchor.MiddleCenter, true);
+        cameraText = CreateText(camera.transform, "CameraText", "CÂMERA", Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero, 12, NeonGold, TextAnchor.MiddleCenter, true);
 
-        Vector2 pRightMin = isPortrait ? new Vector2(0.69f, 0.23f) : new Vector2(0.54f, 0.04f);
-        Vector2 pRightMax = isPortrait ? new Vector2(0.95f, 0.28f) : new Vector2(0.67f, 0.12f);
+        Vector2 pRightMin = isPortrait ? new Vector2(0.68f, 0.19f) : new Vector2(0.555f, 0.035f);
+        Vector2 pRightMax = isPortrait ? new Vector2(0.95f, 0.24f) : new Vector2(0.62f, 0.085f);
         GameObject peekRight = CreateButton(parent, "PeekRightButton", peekBtnColor, pRightMin, pRightMax);
         peekRight.GetComponent<Button>().onClick.AddListener(() => cameraController?.LeanRight());
-        CreateText(peekRight.transform, "PeekRightText", "ESPIAR ►", Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero, 13, NeonCyan, TextAnchor.MiddleCenter, true);
+        CreateText(peekRight.transform, "PeekRightText", "ESPIAR ►", Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero, 12, NeonCyan, TextAnchor.MiddleCenter, true);
 
         // 4. Faixa de Dicas de Teclado PC estilo Arcade (apenas desktop/landscape)
         if (!isPortrait)
         {
-            GameObject hints = CreatePanel(parent, "KeyboardHints", new Color(0.01f, 0.03f, 0.08f, 0.75f), new Vector2(0.24f, 0.005f), new Vector2(0.76f, 0.035f), Vector2.zero, Vector2.zero, false);
-            CreateText(hints.transform, "HintsText", "[WASD / Setas] Mover  •  [Espaço] Descer Garra / Agarrar  •  [Q / E] Espiar", Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero, 12, new Color(0.85f, 0.95f, 1f, 0.95f), TextAnchor.MiddleCenter, false);
+            GameObject hints = CreatePanel(parent, "KeyboardHints", new Color(0.01f, 0.02f, 0.05f, 0.60f), new Vector2(0.28f, 0.003f), new Vector2(0.72f, 0.028f), Vector2.zero, Vector2.zero, false);
+            CreateText(hints.transform, "HintsText", "[WASD] Mover  •  [Espaço] Agarrar  •  [Q / E] Espiar", Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero, 11, new Color(0.85f, 0.95f, 1f, 0.90f), TextAnchor.MiddleCenter, false);
         }
     }
 
