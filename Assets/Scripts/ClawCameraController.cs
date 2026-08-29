@@ -40,8 +40,8 @@ public class ClawCameraController : MonoBehaviour
     public float followDamping = 5.0f;
 
     [Header("Dynamic Tension Zoom")]
-    public float defaultFOV = 64f;
-    public float tensionFOV = 52f;
+    public float defaultFOV = 52f;
+    public float tensionFOV = 44f;
     public float zoomSpeed = 3.5f;
 
     [Header("Sistema de Espiada Livre (First Person Lean)")]
@@ -56,8 +56,8 @@ public class ClawCameraController : MonoBehaviour
     public float maxShakeRotation = 3.5f;
 
     [Header("Direct Shake & FOV Punch")]
-    public float normalFOV = 55f;
-    public float punchFOV = 51f;
+    public float normalFOV = 52f;
+    public float punchFOV = 48f;
     private float directShakeIntensity = 0.08f;
     private float directShakeDuration = 0.15f;
     private float directShakeTimer = 0f;
@@ -96,8 +96,8 @@ public class ClawCameraController : MonoBehaviour
         leftEuler = new Vector3(15f, 90f, 0f);
         rightPosition = new Vector3(3.65f, 0.95f, 0f);
         rightEuler = new Vector3(15f, -90f, 0f);
-        defaultFOV = 64f;
-        tensionFOV = 52f;
+        defaultFOV = 52f;
+        tensionFOV = 44f;
 
         if (cam != null)
         {

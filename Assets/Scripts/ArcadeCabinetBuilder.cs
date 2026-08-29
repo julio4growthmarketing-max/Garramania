@@ -41,15 +41,17 @@ public class ArcadeCabinetBuilder
         // Piso Xadrez Preto
         Material mPisoPreto = CriarMaterialURP(new Color(0.06f, 0.07f, 0.09f), 0.85f, 0.2f);
         
-        // Neon Cyan Emissivo Intenso
-        Material mNeonCyan = CriarEmissivo(new Color(0f, 0.95f, 1f), 3.5f);
-        // Neon Magenta Emissivo Intenso
-        Material mNeonMagenta = CriarEmissivo(new Color(1f, 0.08f, 0.58f), 3.0f);
+        // Neon Cyan Emissivo HDR (Layout 2)
+        Material mNeonCyan = CriarEmissivo(new Color(0.25f, 1.7f, 2.1f), 1.2f);
+        // Neon Magenta Emissivo HDR (Layout 2)
+        Material mNeonMagenta = CriarEmissivo(new Color(2.5f, 0.35f, 1.3f), 1.2f);
         // Neon Amarelo / Dourado Letreiro
-        Material mNeonGold = CriarEmissivo(new Color(1.0f, 0.88f, 0.15f), 2.8f);
+        Material mNeonGold = CriarEmissivo(new Color(1.8f, 1.5f, 0.3f), 1.2f);
         // Luz Verde Status
-        Material mNeonGreen = CriarEmissivo(new Color(0.1f, 1f, 0.4f), 2.5f);
+        Material mNeonGreen = CriarEmissivo(new Color(0.1f, 1.8f, 0.4f), 1.2f);
 
+        // Vidro Cristalino PBR (Layout 2: Reflexo Nítido e Limpo com Reflection Probe)
+        Material mVidroGabinete = CriarVidro(new Color(1f, 1f, 1f, 0.12f), 0.96f);
         // Acrílico / Vidro Translúcido URP
         Material mVidroAcrilico = CriarVidro(new Color(0.85f, 0.95f, 1.0f, 0.18f), 0.96f);
         // Vidro Fumê da Portinhola
@@ -174,8 +176,10 @@ public class ArcadeCabinetBuilder
         // Moldura do Mural
         Cubo("Moldura_Top_Fundo", new Vector3(0, 2.95f, 2.54f), new Vector3(5.1f, 0.12f, 0.06f), mAcoInox, rootParedes);
 
-        // Vidros: 100% Transparentes / Sem névoa leitosa
-        // Os colisores invisíveis abaixo já barram as pelúcias com perfeição física sem embaçar a câmera!
+        // Vidros Físicos PBR Transparentes (Reflexos nítidos da garra, pelúcias e neons)
+        // Cubo("Vidro_Frontal", new Vector3(0, 0.5f, -2.55f), new Vector3(4.8f, 4.8f, 0.02f), mVidroGabinete, rootParedes); // Omitido na frente para visibilidade cristalina
+        Cubo("Vidro_Esquerdo", new Vector3(-2.55f, 0.5f, 0), new Vector3(0.02f, 4.8f, 4.8f), mVidroGabinete, rootParedes);
+        Cubo("Vidro_Direito", new Vector3(2.55f, 0.5f, 0), new Vector3(0.02f, 4.8f, 4.8f), mVidroGabinete, rootParedes);
 
         // Adesivo de Instruções e Decalques Arcade no Vidro.
         // A face frontal do cubo recebia o UV invertido; a rotação no próprio plano
@@ -264,13 +268,12 @@ public class ArcadeCabinetBuilder
         CriarSpotlight(new Vector3(-1.8f, -1.15f, -1.8f), new Color(1f, 0.88f, 0.4f), 5f, 65f, 3.5f, rootCalha);
 
         // Trigger de Entrega de Prêmios
-        GameObject zona = GameObject.CreatePrimitive(PrimitiveType.Cube);
-        zona.name = "ZonaDeEntrega_Invisivel";
+        GameObject zona = new GameObject("ZonaDeEntrega_Invisivel");
         zona.transform.parent = rootCalha;
         zona.transform.position = new Vector3(-1.8f, -1.8f, -1.8f);
         zona.transform.localScale = new Vector3(1.2f, 1.0f, 1.2f);
-        Object.Destroy(zona.GetComponent<MeshRenderer>());
-        zona.GetComponent<BoxCollider>().isTrigger = true;
+        BoxCollider zbc = zona.AddComponent<BoxCollider>();
+        zbc.isTrigger = true;
         PrizeDeliveryZone pdz = zona.AddComponent<PrizeDeliveryZone>();
         if (pdz.OnPrizeDelivered == null) pdz.OnPrizeDelivered = new UnityEngine.Events.UnityEvent<Prize>();
         pdz.OnPrizeDelivered.AddListener((prize) => {
@@ -371,8 +374,11 @@ public class ArcadeCabinetBuilder
 
     private void CriarColisorInvisivel(string nome, Vector3 pos, Vector3 esc, Transform pai)
     {
-        GameObject c = Cubo(nome, pos, esc, null, pai);
-        Object.Destroy(c.GetComponent<MeshRenderer>());
+        GameObject c = new GameObject(nome);
+        c.transform.parent = pai;
+        c.transform.localPosition = pos;
+        c.transform.localScale = esc;
+        c.AddComponent<BoxCollider>();
     }
 
     private Material CriarMaterialURP(Color cor, float smoothness, float metallic)
@@ -390,6 +396,7 @@ public class ArcadeCabinetBuilder
         m.color = cor;
         m.EnableKeyword("_EMISSION");
         m.SetColor("_EmissionColor", cor * intensidade);
+        m.globalIlluminationFlags = MaterialGlobalIlluminationFlags.BakedEmissive;
         return m;
     }
 
@@ -404,6 +411,7 @@ public class ArcadeCabinetBuilder
         m.renderQueue = 3000;
         m.color = cor;
         m.SetFloat("_Smoothness", smoothness);
+        m.SetFloat("_Metallic", 0f);
         m.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
         return m;
     }
@@ -418,6 +426,9 @@ public class ArcadeCabinetBuilder
         light.color = cor;
         light.range = range;
         light.intensity = intensidade;
+        #if UNITY_EDITOR
+        light.lightmapBakeType = LightmapBakeType.Baked;
+#endif
     }
 
     private void CriarSpotlight(Vector3 pos, Color cor, float range, float spotAngle, float intensidade, Transform pai)
@@ -432,5 +443,8 @@ public class ArcadeCabinetBuilder
         light.range = range;
         light.spotAngle = spotAngle;
         light.intensity = intensidade;
+        #if UNITY_EDITOR
+        light.lightmapBakeType = LightmapBakeType.Baked;
+#endif
     }
 }

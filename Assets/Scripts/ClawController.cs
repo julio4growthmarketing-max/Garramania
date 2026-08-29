@@ -629,30 +629,31 @@ public class ClawController : MonoBehaviour
         BoxCollider rootCollider = GetComponent<BoxCollider>();
         if (rootCollider != null) rootCollider.enabled = false;
 
-        // Materiais PBR Mecânicos
+        // Materiais PBR Mecânicos (Layout 2: Aço Escovado com Peso Visual)
         Material mCromo = new Material(Shader.Find("Universal Render Pipeline/Lit"));
-        mCromo.color = new Color(0.92f, 0.94f, 0.98f);
-        mCromo.SetFloat("_Metallic", 0.95f);
-        mCromo.SetFloat("_Smoothness", 0.92f);
+        mCromo.color = new Color(0.24f, 0.24f, 0.26f); // Aço escovado (#3E3E44)
+        mCromo.SetFloat("_Metallic", 0.92f);
+        mCromo.SetFloat("_Smoothness", 0.65f); // Rugosidade de aço industrial usado (não espelho)
 
         Material mChassisPreto = new Material(Shader.Find("Universal Render Pipeline/Lit"));
         mChassisPreto.color = new Color(0.12f, 0.13f, 0.16f);
-        mChassisPreto.SetFloat("_Metallic", 0.5f);
-        mChassisPreto.SetFloat("_Smoothness", 0.75f);
+        mChassisPreto.SetFloat("_Metallic", 0.6f);
+        mChassisPreto.SetFloat("_Smoothness", 0.60f);
 
         Material mDouradoPistao = new Material(Shader.Find("Universal Render Pipeline/Lit"));
-        mDouradoPistao.color = new Color(1.0f, 0.82f, 0.25f);
-        mDouradoPistao.SetFloat("_Metallic", 0.92f);
-        mDouradoPistao.SetFloat("_Smoothness", 0.88f);
+        mDouradoPistao.color = new Color(0.85f, 0.68f, 0.18f);
+        mDouradoPistao.SetFloat("_Metallic", 0.90f);
+        mDouradoPistao.SetFloat("_Smoothness", 0.70f);
 
         Material mBorrachaVermelha = new Material(Shader.Find("Universal Render Pipeline/Lit"));
-        mBorrachaVermelha.color = new Color(0.92f, 0.15f, 0.20f);
-        mBorrachaVermelha.SetFloat("_Smoothness", 0.45f);
+        mBorrachaVermelha.color = new Color(0.82f, 0.12f, 0.16f);
+        mBorrachaVermelha.SetFloat("_Metallic", 0f);
+        mBorrachaVermelha.SetFloat("_Smoothness", 0.28f); // Borracha fosca aderente
 
         Material mNeonRing = new Material(Shader.Find("Universal Render Pipeline/Lit"));
-        mNeonRing.color = new Color(0f, 0.95f, 1f);
+        mNeonRing.color = new Color(0.25f, 1.7f, 2.1f);
         mNeonRing.EnableKeyword("_EMISSION");
-        mNeonRing.SetColor("_EmissionColor", new Color(0f, 0.95f, 1f) * 3.2f);
+        mNeonRing.SetColor("_EmissionColor", new Color(0.25f, 1.7f, 2.1f) * 1.5f);
 
         // Container Pendular para Inércia da Garra
         GameObject visualContainerObj = new GameObject("Garra_Visual_Sway");
@@ -777,8 +778,16 @@ public class ClawController : MonoBehaviour
         RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Flat;
         RenderSettings.ambientLight = new Color(0.18f, 0.20f, 0.28f);
 
-        // 1. CONSTRUÇÃO DO GABINETE MODULAR ARQUITETURAL DE ALTA FIDELIDADE
-        ArcadeCabinetBuilder cabinetBuilder = ArcadeCabinetBuilder.Build();
+        // 1. GABINETE MODULAR ARQUITETURAL DE ALTA FIDELIDADE (Reutiliza existente ou cria fallback)
+        GameObject existingCabinet = GameObject.Find("Gabinete_Arcade_Modular");
+        if (existingCabinet == null)
+        {
+            ArcadeCabinetBuilder.Build();
+        }
+        else
+        {
+            Debug.Log("[ClawController] Gabinete pré-assado/existente na cena reutilizado.");
+        }
 
         // 2. MONTE DE PELÚCIAS: responsabilidade isolada no spawner físico.
         // O ClawController fica responsável somente por movimento, garra e captura.
