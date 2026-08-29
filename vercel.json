@@ -1,6 +1,10 @@
 {
   "cleanUrls": true,
-  "outputDirectory": "Build_Web",
+  "rewrites": [
+    { "source": "/", "destination": "/Build_Web/index.html" },
+    { "source": "/Build/(.*)", "destination": "/Build_Web/Build/$1" },
+    { "source": "/TemplateData/(.*)", "destination": "/Build_Web/TemplateData/$1" }
+  ],
   "headers": [
     {
       "source": "/(.*)",
@@ -20,7 +24,7 @@
       ]
     },
     {
-      "source": "/Build/(.*)\\.wasm",
+      "source": "/(.*)\\.wasm",
       "headers": [
         {
           "key": "Content-Type",
@@ -33,7 +37,7 @@
       ]
     },
     {
-      "source": "/Build/(.*)\\.data",
+      "source": "/(.*)\\.data",
       "headers": [
         {
           "key": "Content-Type",
@@ -46,7 +50,7 @@
       ]
     },
     {
-      "source": "/Build/(.*)\\.js",
+      "source": "/(.*)\\.js",
       "headers": [
         {
           "key": "Content-Type",
