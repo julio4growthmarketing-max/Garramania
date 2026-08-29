@@ -89,24 +89,30 @@
 
       if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
         // Mobile device style: fill the whole browser client area with the game canvas:
-
         var meta = document.createElement('meta');
         meta.name = 'viewport';
-        meta.content = 'width=device-width, height=device-height, initial-scale=1.0, user-scalable=no, shrink-to-fit=yes';
+        meta.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover';
         document.getElementsByTagName('head')[0].appendChild(meta);
         document.querySelector("#unity-container").className = "unity-mobile";
         canvas.className = "unity-mobile";
 
-        // To lower canvas resolution on mobile devices to gain some
-        // performance, uncomment the following line:
-        // config.devicePixelRatio = 1;
-
-
+        // Trava o DPR no iOS para não exceder o limite de memória da GPU no Safari
+        config.devicePixelRatio = Math.min(window.devicePixelRatio || 1, 1.5);
       } else {
         // Desktop style: Render the game canvas in a window that can be maximized to fullscreen:
         canvas.style.width = "960px";
         canvas.style.height = "600px";
       }
+
+      // Desbloqueio do AudioContext no Safari iOS no primeiro toque
+      window.addEventListener('touchstart', function unlockAudio() {
+        if (typeof webkitAudioContext !== 'undefined') {
+          try {
+            var ctx = new webkitAudioContext();
+            if (ctx.state === 'suspended') ctx.resume();
+          } catch(e) {}
+        }
+      }, { once: true });
 
       document.querySelector("#unity-loading-bar").style.display = "block";
 

@@ -5,21 +5,13 @@
       "source": "/(.*)",
       "headers": [
         {
-          "key": "Cross-Origin-Opener-Policy",
-          "value": "same-origin"
-        },
-        {
-          "key": "Cross-Origin-Embedder-Policy",
-          "value": "require-corp"
-        },
-        {
           "key": "Access-Control-Allow-Origin",
           "value": "*"
         }
       ]
     },
     {
-      "source": "/Build/(.*)\\.wasm",
+      "source": "/(.*)\\.wasm",
       "headers": [
         {
           "key": "Content-Type",
@@ -32,7 +24,7 @@
       ]
     },
     {
-      "source": "/Build/(.*)\\.data",
+      "source": "/(.*)\\.data",
       "headers": [
         {
           "key": "Content-Type",
@@ -45,7 +37,7 @@
       ]
     },
     {
-      "source": "/Build/(.*)\\.js",
+      "source": "/(.*)\\.js",
       "headers": [
         {
           "key": "Content-Type",
