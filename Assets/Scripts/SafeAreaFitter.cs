@@ -43,6 +43,14 @@ public sealed class SafeAreaFitter : MonoBehaviour
         max.x /= Mathf.Max(1, Screen.width);
         max.y /= Mathf.Max(1, Screen.height);
 
+        // No WebGL / iOS Safari, se o safeArea vier colado na borda, garante o respiro do notch e da barra de navegação
+        bool isPortrait = Screen.height > Screen.width;
+        if (isPortrait)
+        {
+            if (max.y > 0.965f) max.y = 0.955f; // Respiro no topo (notch / dynamic island)
+            if (min.y < 0.030f) min.y = 0.020f; // Respiro na base (home bar)
+        }
+
         rectTransform.anchorMin = min;
         rectTransform.anchorMax = max;
         rectTransform.offsetMin = Vector2.zero;

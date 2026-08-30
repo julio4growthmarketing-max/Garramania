@@ -321,20 +321,15 @@ public class ArcadeCabinetBuilder
         Cubo("Caixa_Som_Esq", new Vector3(-2.1f, 3.28f, -2.74f), new Vector3(0.42f, 0.42f, 0.08f), mPisoPreto, rootDossel);
         Cubo("Caixa_Som_Dir", new Vector3(2.1f, 3.28f, -2.74f), new Vector3(0.42f, 0.42f, 0.08f), mPisoPreto, rootDossel);
 
-        // Iluminação Principal de Vitrine Arcade (Spotlights no teto focando as pelúcias e a garra)
-        CriarSpotlight(new Vector3(0.35f, 2.85f, 0.35f), new Color(1.0f, 0.96f, 0.90f), 8f, 75f, 4.5f, rootDossel);
-        CriarSpotlight(new Vector3(-0.85f, 2.85f, 0.85f), new Color(0.85f, 0.95f, 1.0f), 7f, 65f, 2.5f, rootDossel);
-        CriarLuz(new Vector3(0.35f, 2.60f, 0.35f), new Color(1f, 0.98f, 0.92f), 6.5f, 2.0f, rootDossel);
+        // Iluminação de Vitrine Arcade Suave (Spotlights direcionados exclusivamente para baixo no monte)
+        CriarSpotlight(new Vector3(0f, 2.85f, 0f), new Color(1.0f, 0.97f, 0.92f), 6f, 60f, 1.5f, rootDossel);
+        CriarSpotlight(new Vector3(-0.6f, 2.85f, 0.4f), new Color(0.90f, 0.95f, 1.0f), 5f, 55f, 1.0f, rootDossel);
 
         // ======================== 9. ILUMINAÇÃO VOLUMÉTRICA ARCADE ========================
         Transform rootLuzes = CriarSubGrupo("09_Iluminacao_Arcade");
-        // Dois grandes holofotes (Spotlights) superiores focados no poço
-        CriarSpotlight(new Vector3(0, 3.1f, 0.2f), new Color(1.0f, 0.98f, 0.90f), 12f, 75f, 4.5f, rootLuzes);
-        CriarSpotlight(new Vector3(-0.7f, 3.1f, -0.6f), new Color(0.92f, 0.96f, 1.0f), 10f, 65f, 3.0f, rootLuzes);
-        
-        // Luzes neon ambiente de preenchimento
-        CriarLuz(new Vector3(-2.1f, 2.7f, -2.1f), new Color(1f, 0.15f, 0.65f), 7f, 2.0f, rootLuzes);
-        CriarLuz(new Vector3(2.1f, 2.7f, 2.1f), new Color(0f, 0.9f, 1f), 7f, 2.0f, rootLuzes);
+        // Holofotes superiores focados no poço de pelúcias (sem lâmpadas visíveis na câmera)
+        CriarSpotlight(new Vector3(0, 3.1f, 0.2f), new Color(1.0f, 0.98f, 0.92f), 8f, 65f, 1.6f, rootLuzes);
+        CriarSpotlight(new Vector3(-0.7f, 3.1f, -0.6f), new Color(0.92f, 0.96f, 1.0f), 7f, 55f, 1.2f, rootLuzes);
 
         // ======================== 10. CENÁRIO DE FUNDO TOKYO ARCADE ========================
         Transform rootBackdrop = CriarSubGrupo("10_Cenario_Fundo_Tokyo");

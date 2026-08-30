@@ -11,8 +11,8 @@ public sealed class CabinetLightingController : MonoBehaviour
 
     private Light clawSpotlight;
     private Light mainCabinetLight;
-    private float defaultClawSpotIntensity = 1.4f;
-    private float dramaticClawSpotIntensity = 5.2f;
+    private float defaultClawSpotIntensity = 0.5f;
+    private float dramaticClawSpotIntensity = 1.6f;
     private float defaultMainLightIntensity = 1.0f;
 
     private Coroutine spotlightRoutine;
