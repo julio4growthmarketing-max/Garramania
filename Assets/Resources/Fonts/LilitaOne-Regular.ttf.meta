@@ -1,0 +1,22 @@
+fileFormatVersion: 2
+guid: e49a37c0f12d4a5198e3b1c8f5e71822
+TrueTypeFontImporter:
+  serializedVersion: 4
+  fontSize: 32
+  forceTextureCase: -2
+  characterSpacing: 0
+  characterPadding: 1
+  tabSize: 4
+  fontRenderingMode: 0
+  ascentCalculationMode: 1
+  shouldRoundAdvanceValue: 1
+  fontNames:
+  - Lilita One
+  fallbackFontReferences: []
+  customBorderColor: {r: 0, g: 0, b: 0, a: 1}
+  fontColor: {r: 1, g: 1, b: 1, a: 1}
+  useLegacyBoundsCalculation: 0
+  shouldSmoothBounds: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
