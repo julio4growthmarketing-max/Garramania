@@ -477,26 +477,26 @@ public sealed class ProfessionalUIController : MonoBehaviour
         bool isP = Screen.width < Screen.height;
 
         // Pílula 1: Fichas com Moeda 3D (Esquerda)
-        Vector2 credMin = isP ? new Vector2(0.03f, 0.932f) : new Vector2(0.025f, 0.925f);
-        Vector2 credMax = isP ? new Vector2(0.33f, 0.985f) : new Vector2(0.18f, 0.985f);
+        Vector2 credMin = isP ? new Vector2(0.03f, 0.930f) : new Vector2(0.025f, 0.920f);
+        Vector2 credMax = isP ? new Vector2(0.33f, 0.985f) : new Vector2(0.18f, 0.988f);
         GameObject credits = CreateGlassPill(parent, "CreditsPill", credMin, credMax, NeonCyan);
         GameObject coinIc = CreatePanel(credits.transform, "CoinIcon", Color.white, new Vector2(0.05f, 0.12f), new Vector2(0.28f, 0.88f), Vector2.zero, Vector2.zero, false, GetUISprite("icon_gold_coin"));
         coinIc.GetComponent<Image>().preserveAspect = true;
-        creditsText = CreateText(credits.transform, "CreditsText", "3 Fichas", new Vector2(0.30f, 0f), Vector2.one, Vector2.zero, Vector2.zero, 15, Color.white, TextAnchor.MiddleLeft, true);
+        creditsText = CreateText(credits.transform, "CreditsText", "3 Fichas", new Vector2(0.30f, 0f), Vector2.one, Vector2.zero, Vector2.zero, 17, Color.white, TextAnchor.MiddleLeft, true);
 
         // Pílula 2: Timer Central
-        Vector2 timeMin = isP ? new Vector2(0.37f, 0.924f) : new Vector2(0.44f, 0.920f);
+        Vector2 timeMin = isP ? new Vector2(0.37f, 0.920f) : new Vector2(0.44f, 0.915f);
         Vector2 timeMax = isP ? new Vector2(0.63f, 0.988f) : new Vector2(0.56f, 0.988f);
         GameObject timer = CreateGlassPill(parent, "TimerPill", timeMin, timeMax, NeonGold);
         timerFill = CreatePanel(timer.transform, "TimerFill", NeonCyan, new Vector2(0.04f, 0.10f), new Vector2(0.96f, 0.85f), Vector2.zero, Vector2.zero, false, GetRoundedRectSprite()).GetComponent<Image>();
         timerFill.type = Image.Type.Sliced;
         timerFillRect = timerFill.rectTransform;
-        timerText = CreateText(timer.transform, "TimerText", "45s", Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero, 20, Color.white, TextAnchor.MiddleCenter, true);
+        timerText = CreateText(timer.transform, "TimerText", "45s", Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero, 22, Color.white, TextAnchor.MiddleCenter, true);
 
         // Pílula 3: Botão Álbum no HUD com Mochilinha 3D (Direita)
-        Vector2 albMin = isP ? new Vector2(0.67f, 0.932f) : new Vector2(0.82f, 0.925f);
-        Vector2 albMax = isP ? new Vector2(0.97f, 0.985f) : new Vector2(0.975f, 0.985f);
-        GameObject albumBtn = CreateArcadeButton(parent, "AlbumHudBtn", albMin, albMax, Button3DTheme.Sapphire, OpenAlbum, "Álbum (0/6)", 13, "icon_collection_bag");
+        Vector2 albMin = isP ? new Vector2(0.67f, 0.930f) : new Vector2(0.82f, 0.920f);
+        Vector2 albMax = isP ? new Vector2(0.97f, 0.985f) : new Vector2(0.975f, 0.988f);
+        GameObject albumBtn = CreateArcadeButton(parent, "AlbumHudBtn", albMin, albMax, Button3DTheme.Sapphire, OpenAlbum, "Álbum (0/6)", 14, "icon_collection_bag");
         albumHudButtonText = albumBtn.GetComponentInChildren<Text>();
     }
 
@@ -672,7 +672,7 @@ public sealed class ProfessionalUIController : MonoBehaviour
         albumGridContainer = gridObj.transform;
 
         // Botão Fechar (Candy Vermelho 3D)
-        CreateArcadeButton(window.transform, "CloseAlbumBtn", new Vector2(0.15f, 0.020f), new Vector2(0.85f, 0.095f), Button3DTheme.SanwaRed, CloseAlbum, "VOLTAR À MÁQUINA", 16);
+        CreateArcadeButton(window.transform, "CloseAlbumBtn", new Vector2(0.15f, 0.020f), new Vector2(0.85f, 0.095f), Button3DTheme.SanwaRed, CloseAlbum, "VOLTAR À MÁQUINA", 18);
 
         BuildInspectModal(parent);
     }
@@ -730,14 +730,14 @@ public sealed class ProfessionalUIController : MonoBehaviour
 
                 // 2. Badge ×N no canto superior direito
                 GameObject countPill = CreateGlassPill(card.transform, "CountPill", new Vector2(0.60f, 0.78f), new Vector2(0.96f, 0.95f), NeonGold);
-                CreateText(countPill.transform, "CountText", $"×{item.count}", Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero, 12, NeonGold, TextAnchor.MiddleCenter, true);
+                CreateText(countPill.transform, "CountText", $"×{item.count}", Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero, 13, NeonGold, TextAnchor.MiddleCenter, true);
 
                 // 3. Nome do Bichinho
-                CreateText(card.transform, "Name", item.displayName.ToUpperInvariant(), new Vector2(0.04f, 0.22f), new Vector2(0.96f, 0.40f), Vector2.zero, Vector2.zero, 14, Color.white, TextAnchor.MiddleCenter, true);
+                CreateText(card.transform, "Name", item.displayName.ToUpperInvariant(), new Vector2(0.04f, 0.20f), new Vector2(0.96f, 0.40f), Vector2.zero, Vector2.zero, 15, Color.white, TextAnchor.MiddleCenter, true);
 
                 // 4. Tag de Raridade
                 string tag = item.rarity == PrizeRarity.Rare ? "★ RARO" : item.rarity == PrizeRarity.Uncommon ? "★ INCOMUM" : "COMUM";
-                CreateText(card.transform, "RarityTag", tag, new Vector2(0.04f, 0.06f), new Vector2(0.96f, 0.22f), Vector2.zero, Vector2.zero, 12, rarityColor, TextAnchor.MiddleCenter, true);
+                CreateText(card.transform, "RarityTag", tag, new Vector2(0.04f, 0.05f), new Vector2(0.96f, 0.20f), Vector2.zero, Vector2.zero, 13, rarityColor, TextAnchor.MiddleCenter, true);
             }
             else
             {
@@ -745,8 +745,8 @@ public sealed class ProfessionalUIController : MonoBehaviour
                 GameObject cardMystery = CreatePanel(card.transform, "MysteryCard", Color.white, new Vector2(0.12f, 0.30f), new Vector2(0.88f, 0.92f), Vector2.zero, Vector2.zero, false, GetUISprite("card_mystery_rainbow"));
                 cardMystery.GetComponent<Image>().preserveAspect = true;
 
-                CreateText(card.transform, "Name", "???", new Vector2(0.04f, 0.16f), new Vector2(0.96f, 0.28f), Vector2.zero, Vector2.zero, 13, new Color(0.85f, 0.9f, 1f, 0.95f), TextAnchor.MiddleCenter, true);
-                CreateText(card.transform, "Hint", "BLOQUEADO", new Vector2(0.04f, 0.04f), new Vector2(0.96f, 0.16f), Vector2.zero, Vector2.zero, 11, new Color(0.6f, 0.7f, 0.85f, 0.8f), TextAnchor.MiddleCenter, false);
+                CreateText(card.transform, "Name", "???", new Vector2(0.04f, 0.16f), new Vector2(0.96f, 0.28f), Vector2.zero, Vector2.zero, 14, new Color(0.85f, 0.9f, 1f, 0.95f), TextAnchor.MiddleCenter, true);
+                CreateText(card.transform, "Hint", "BLOQUEADO", new Vector2(0.04f, 0.04f), new Vector2(0.96f, 0.16f), Vector2.zero, Vector2.zero, 12, new Color(0.6f, 0.7f, 0.85f, 0.8f), TextAnchor.MiddleCenter, false);
             }
         }
     }
@@ -983,14 +983,21 @@ public sealed class ProfessionalUIController : MonoBehaviour
             Sprite icSp = GetUISprite(iconName);
             if (icSp != null)
             {
-                GameObject icObj = CreatePanel(btnObj.transform, "Icon", Color.white, new Vector2(0.06f, 0.15f), new Vector2(0.26f, 0.85f), Vector2.zero, Vector2.zero, false, icSp);
+                GameObject icObj = CreatePanel(btnObj.transform, "Icon", Color.white, new Vector2(0.06f, 0.16f), new Vector2(0.30f, 0.88f), Vector2.zero, Vector2.zero, false, icSp);
                 icObj.GetComponent<Image>().preserveAspect = true;
 
                 if (!string.IsNullOrEmpty(label))
                 {
-                    Text txt = CreateText(btnObj.transform, "Label", label, new Vector2(0.24f, 0f), new Vector2(0.96f, 1f), Vector2.zero, Vector2.zero, fontSize, labelColor, TextAnchor.MiddleCenter, true);
+                    Text txt = CreateText(btnObj.transform, "Label", label, new Vector2(0.30f, 0.10f), new Vector2(0.96f, 0.94f), Vector2.zero, Vector2.zero, fontSize, labelColor, TextAnchor.MiddleCenter, true);
+                    txt.resizeTextForBestFit = true;
+                    txt.resizeTextMinSize = 12;
+                    txt.resizeTextMaxSize = Mathf.Max(fontSize + 6, 26);
                     Outline ol = txt.GetComponent<Outline>();
-                    if (ol != null) ol.effectColor = outlineColor;
+                    if (ol != null)
+                    {
+                        ol.effectColor = outlineColor;
+                        ol.effectDistance = new Vector2(2f, -2f);
+                    }
                 }
                 return btnObj;
             }
@@ -998,9 +1005,16 @@ public sealed class ProfessionalUIController : MonoBehaviour
 
         if (!string.IsNullOrEmpty(label))
         {
-            Text txt = CreateText(btnObj.transform, "Label", label, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero, fontSize, labelColor, TextAnchor.MiddleCenter, true);
+            Text txt = CreateText(btnObj.transform, "Label", label, new Vector2(0.04f, 0.10f), new Vector2(0.96f, 0.94f), Vector2.zero, Vector2.zero, fontSize, labelColor, TextAnchor.MiddleCenter, true);
+            txt.resizeTextForBestFit = true;
+            txt.resizeTextMinSize = 13;
+            txt.resizeTextMaxSize = Mathf.Max(fontSize + 8, 32);
             Outline ol = txt.GetComponent<Outline>();
-            if (ol != null) ol.effectColor = outlineColor;
+            if (ol != null)
+            {
+                ol.effectColor = outlineColor;
+                ol.effectDistance = new Vector2(2f, -2f);
+            }
         }
 
         return btnObj;
