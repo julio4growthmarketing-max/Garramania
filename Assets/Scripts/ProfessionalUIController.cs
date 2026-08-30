@@ -54,7 +54,8 @@ public enum Button3DTheme
     Emerald,
     Sapphire,
     Gold,
-    SanwaRed
+    SanwaRed,
+    Purple
 }
 
 public sealed class ProfessionalUIController : MonoBehaviour
@@ -253,7 +254,7 @@ public sealed class ProfessionalUIController : MonoBehaviour
 
     private void HandleCreditsChanged(int value)
     {
-        if (creditsText != null) creditsText.text = $"🪙 {value} Fichas";
+        if (creditsText != null) creditsText.text = $"{value} Fichas";
     }
 
     private void HandlePrizeDelivered(Prize prize, int total)
@@ -475,11 +476,13 @@ public sealed class ProfessionalUIController : MonoBehaviour
     {
         bool isP = Screen.width < Screen.height;
 
-        // Pílula 1: Fichas (Esquerda)
+        // Pílula 1: Fichas com Moeda 3D (Esquerda)
         Vector2 credMin = isP ? new Vector2(0.03f, 0.932f) : new Vector2(0.025f, 0.925f);
         Vector2 credMax = isP ? new Vector2(0.33f, 0.985f) : new Vector2(0.18f, 0.985f);
         GameObject credits = CreateGlassPill(parent, "CreditsPill", credMin, credMax, NeonCyan);
-        creditsText = CreateText(credits.transform, "CreditsText", "🪙 3 Fichas", Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero, 16, Color.white, TextAnchor.MiddleCenter, true);
+        GameObject coinIc = CreatePanel(credits.transform, "CoinIcon", Color.white, new Vector2(0.05f, 0.12f), new Vector2(0.28f, 0.88f), Vector2.zero, Vector2.zero, false, GetUISprite("icon_gold_coin"));
+        coinIc.GetComponent<Image>().preserveAspect = true;
+        creditsText = CreateText(credits.transform, "CreditsText", "3 Fichas", new Vector2(0.30f, 0f), Vector2.one, Vector2.zero, Vector2.zero, 15, Color.white, TextAnchor.MiddleLeft, true);
 
         // Pílula 2: Timer Central
         Vector2 timeMin = isP ? new Vector2(0.37f, 0.924f) : new Vector2(0.44f, 0.920f);
@@ -490,11 +493,11 @@ public sealed class ProfessionalUIController : MonoBehaviour
         timerFillRect = timerFill.rectTransform;
         timerText = CreateText(timer.transform, "TimerText", "45s", Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero, 20, Color.white, TextAnchor.MiddleCenter, true);
 
-        // Pílula 3: Botão Álbum no HUD (Direita)
+        // Pílula 3: Botão Álbum no HUD com Mochilinha 3D (Direita)
         Vector2 albMin = isP ? new Vector2(0.67f, 0.932f) : new Vector2(0.82f, 0.925f);
         Vector2 albMax = isP ? new Vector2(0.97f, 0.985f) : new Vector2(0.975f, 0.985f);
-        GameObject albumBtn = CreateArcadeButton(parent, "AlbumHudBtn", albMin, albMax, Button3DTheme.Sapphire, OpenAlbum);
-        albumHudButtonText = CreateText(albumBtn.transform, "AlbumHudBtnText", "🏆 Álbum (0/6)", Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero, 14, NeonGold, TextAnchor.MiddleCenter, true);
+        GameObject albumBtn = CreateArcadeButton(parent, "AlbumHudBtn", albMin, albMax, Button3DTheme.Sapphire, OpenAlbum, "Álbum (0/6)", 13, "icon_collection_bag");
+        albumHudButtonText = albumBtn.GetComponentInChildren<Text>();
     }
 
     // -------------------------------------------------------------
@@ -533,29 +536,29 @@ public sealed class ProfessionalUIController : MonoBehaviour
         actionText = CreateText(actionButtonObj.transform, "ActionText", "AGARRAR", new Vector2(0.05f, 0.42f), new Vector2(0.95f, 0.82f), Vector2.zero, Vector2.zero, isP ? 20 : 22, Color.white, TextAnchor.MiddleCenter, true);
         actionSubText = CreateText(actionButtonObj.transform, "ActionSubText", "DESCER", new Vector2(0.05f, 0.16f), new Vector2(0.95f, 0.42f), Vector2.zero, Vector2.zero, 12, new Color(1f, 1f, 1f, 0.90f), TextAnchor.MiddleCenter, false);
 
-        // 3. Botão Alternador de Câmera (Ícone Circular 44pt no Canto Superior Direito - SEM TAPAR OS BICHOS)
-        Vector2 camMin = isP ? new Vector2(0.84f, 0.850f) : new Vector2(0.92f, 0.840f);
-        Vector2 camMax = isP ? new Vector2(0.97f, 0.915f) : new Vector2(0.98f, 0.910f);
-        CreateArcadeButton(parent, "CamToggleBtn", camMin, camMax, Button3DTheme.Sapphire, () => cameraController?.ToggleCameraAngle(), "🎥 Ângulo", 13);
+        // 3. Botão Alternador de Câmera
+        Vector2 camMin = isP ? new Vector2(0.80f, 0.850f) : new Vector2(0.90f, 0.840f);
+        Vector2 camMax = isP ? new Vector2(0.98f, 0.915f) : new Vector2(0.99f, 0.910f);
+        CreateArcadeButton(parent, "CamToggleBtn", camMin, camMax, Button3DTheme.Sapphire, () => cameraController?.ToggleCameraAngle(), "ÂNGULO", 12, "icon_rotate_camera");
 
-        // 4. Botão Ficha Dourada (Docked Acima do Botão Sanwa na Base - NÃO Cobre os Bichos!)
+        // 4. Botão Ficha Dourada (Docked Acima do Botão Sanwa na Base)
         Vector2 goldMin = isP ? new Vector2(0.67f, 0.200f) : new Vector2(0.82f, 0.250f);
-        Vector2 goldMax = isP ? new Vector2(0.97f, 0.245f) : new Vector2(0.97f, 0.295f);
+        Vector2 goldMax = isP ? new Vector2(0.97f, 0.250f) : new Vector2(0.97f, 0.300f);
         GameObject goldBtn = CreateArcadeButton(parent, "GoldenTokenBtn", goldMin, goldMax, Button3DTheme.Gold, () => {
             if (PlayerEconomyManager.Instance != null)
             {
                 bool active = PlayerEconomyManager.Instance.ToggleGoldenClaw();
                 if (actionButtonCore != null) actionButtonCore.color = active ? new Color(1f, 0.9f, 0.4f, 1f) : Color.white;
                 if (actionText != null) actionText.text = active ? "AGARRAR ★" : "AGARRAR";
-                if (goldenBtnText != null) goldenBtnText.text = active ? "★ ATIVO 100%" : "★ FORÇA 100%";
+                if (goldenBtnText != null) goldenBtnText.text = active ? "ATIVO 100%" : "FORÇA 100%";
             }
-        }, "★ FORÇA 100%", 13);
+        }, "FORÇA 100%", 12, "icon_gold_coin");
         goldenBtnBg = goldBtn.GetComponent<Image>();
         goldenBtnText = goldBtn.GetComponentInChildren<Text>();
     }
 
     // -------------------------------------------------------------
-    // MENU INICIAL: Bottom Sheet Compacto (34% da tela)
+    // MENU INICIAL: Bottom Sheet Compacto com Candy UI
     // -------------------------------------------------------------
     private void BuildMenu(Transform parent)
     {
@@ -565,34 +568,31 @@ public sealed class ProfessionalUIController : MonoBehaviour
         Vector2 logoMin = isP ? new Vector2(0.08f, 0.86f) : new Vector2(0.30f, 0.88f);
         Vector2 logoMax = isP ? new Vector2(0.92f, 0.96f) : new Vector2(0.70f, 0.98f);
         GameObject logoGroup = CreatePanel(parent, "HeaderLogo", Color.clear, logoMin, logoMax, Vector2.zero, Vector2.zero, false);
-        CreateText(logoGroup.transform, "LogoTitle", "GARRAMANIA", new Vector2(0f, 0.38f), Vector2.one, Vector2.zero, Vector2.zero, isP ? 36 : 40, NeonGold, TextAnchor.MiddleCenter, true);
+        CreateText(logoGroup.transform, "LogoTitle", "GARRAMANIA", new Vector2(0f, 0.38f), Vector2.one, Vector2.zero, Vector2.zero, isP ? 38 : 42, NeonGold, TextAnchor.MiddleCenter, true);
         CreateText(logoGroup.transform, "LogoSub", "FLIPERAMA • CLAW ARCADE", Vector2.zero, new Vector2(1f, 0.40f), Vector2.zero, Vector2.zero, 13, NeonCyan, TextAnchor.MiddleCenter, true);
 
-        // Bottom Sheet (34% da altura da tela na base)
+        // Bottom Sheet (Placa Arredondada Translúcida)
         Vector2 sheetMin = isP ? new Vector2(0.04f, 0.02f) : new Vector2(0.25f, 0.02f);
         Vector2 sheetMax = isP ? new Vector2(0.96f, 0.36f) : new Vector2(0.75f, 0.42f);
 
-        GameObject sheet = CreatePanel(parent, "MenuSheet", Color.white, sheetMin, sheetMax, Vector2.zero, Vector2.zero, true, GetUISprite("panel_card_3d", new Vector4(24, 24, 24, 24)));
+        GameObject sheet = CreatePanel(parent, "MenuSheet", new Color(0.03f, 0.07f, 0.16f, 0.88f), sheetMin, sheetMax, Vector2.zero, Vector2.zero, true, GetUISprite("card_dialog_blue", new Vector4(60, 60, 60, 60)));
 
-        // Botão Principal: INICIAR JOGADA (54pt, Arcade Emerald 3D)
+        // Botão Principal: INICIAR JOGADA (Cápsula Verde Candy 3D)
         CreateArcadeButton(sheet.transform, "PlayBtn", new Vector2(0.06f, 0.54f), new Vector2(0.94f, 0.88f), Button3DTheme.Emerald, StartGame, "INICIAR JOGADA ▶", isP ? 20 : 22);
 
-        // Linha de Botões Secundários: Álbum (50%) e +3 Fichas (50%)
-        GameObject albumBtn = CreateArcadeButton(sheet.transform, "MenuAlbumBtn", new Vector2(0.06f, 0.20f), new Vector2(0.48f, 0.48f), Button3DTheme.Sapphire, OpenAlbum);
-        menuAlbumButtonText = CreateText(albumBtn.transform, "AlbumText", "🏆 ÁLBUM (0/6)", Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero, 14, NeonCyan, TextAnchor.MiddleCenter, true);
+        // Linha de Botões Secundários: Álbum com Mochilinha 3D e +3 Fichas com Moeda 3D
+        GameObject albumBtn = CreateArcadeButton(sheet.transform, "MenuAlbumBtn", new Vector2(0.06f, 0.18f), new Vector2(0.48f, 0.48f), Button3DTheme.Sapphire, OpenAlbum, "ÁLBUM (0/6)", 13, "icon_collection_bag");
+        menuAlbumButtonText = albumBtn.GetComponentInChildren<Text>();
 
-        CreateArcadeButton(sheet.transform, "DailyRewardBtn", new Vector2(0.52f, 0.20f), new Vector2(0.94f, 0.48f), Button3DTheme.Gold, () => {
-            if (PlayerEconomyManager.Instance != null)
+        CreateArcadeButton(sheet.transform, "DailyRewardBtn", new Vector2(0.52f, 0.18f), new Vector2(0.94f, 0.48f), Button3DTheme.Gold, () => {
+            if (PlayerEconomyManager.Instance != null && PlayerEconomyManager.Instance.ClaimDailyReward())
             {
-                if (PlayerEconomyManager.Instance.ClaimDailyReward())
-                {
-                    AudioFeedbackController.Instance?.PlayCoin();
-                }
+                AudioFeedbackController.Instance?.PlayCoin();
             }
-        }, "🎁 +3 FICHAS", 14);
+        }, "+3 FICHAS", 13, "icon_gold_coin");
 
         // Rodapé Sutil
-        CreateText(sheet.transform, "Hint", "Mire com o joystick e aperte o botão para descer", new Vector2(0.05f, 0.04f), new Vector2(0.95f, 0.17f), Vector2.zero, Vector2.zero, 12, new Color(1f, 1f, 1f, 0.65f), TextAnchor.MiddleCenter, false);
+        CreateText(sheet.transform, "Hint", "Mire com o joystick e aperte o botão para descer", new Vector2(0.05f, 0.03f), new Vector2(0.95f, 0.16f), Vector2.zero, Vector2.zero, 12, new Color(1f, 1f, 1f, 0.70f), TextAnchor.MiddleCenter, false);
     }
 
     // -------------------------------------------------------------
@@ -607,24 +607,25 @@ public sealed class ProfessionalUIController : MonoBehaviour
         Vector2 sheetMin = isP ? new Vector2(0.04f, 0.02f) : new Vector2(0.24f, 0.02f);
         Vector2 sheetMax = isP ? new Vector2(0.96f, 0.44f) : new Vector2(0.76f, 0.50f);
 
-        GameObject sheet = CreatePanel(parent, "ResultSheet", Color.white, sheetMin, sheetMax, Vector2.zero, Vector2.zero, true, GetUISprite("panel_card_3d", new Vector4(24, 24, 24, 24)));
+        GameObject sheet = CreatePanel(parent, "ResultSheet", new Color(0.03f, 0.07f, 0.16f, 0.92f), sheetMin, sheetMax, Vector2.zero, Vector2.zero, true, GetUISprite("card_dialog_blue", new Vector4(60, 60, 60, 60)));
 
-        // Título de Celebração
-        resultTitleText = CreateText(sheet.transform, "Title", "🎉 PRÊMIO CAPTURADO!", new Vector2(0.05f, 0.84f), new Vector2(0.95f, 0.96f), Vector2.zero, Vector2.zero, 22, NeonGold, TextAnchor.MiddleCenter, true);
+        // Faixa de Celebração (Ribbon Banner Laranja 3D)
+        GameObject bannerObj = CreatePanel(sheet.transform, "CelebrationBanner", Color.white, new Vector2(0.06f, 0.82f), new Vector2(0.94f, 0.98f), Vector2.zero, Vector2.zero, false, GetUISprite("banner_ribbon_orange", new Vector4(40, 20, 40, 20)));
+        resultTitleText = CreateText(bannerObj.transform, "Title", "🎉 PRÊMIO CAPTURADO!", Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero, 20, Color.white, TextAnchor.MiddleCenter, true);
 
         // Bloco Central: Retrato Ilustrado à Esquerda + Detalhes à Direita
-        GameObject portraitContainer = CreatePanel(sheet.transform, "PortraitContainer", new Color(0.08f, 0.12f, 0.22f, 0.95f), new Vector2(0.08f, 0.40f), new Vector2(0.35f, 0.80f), Vector2.zero, Vector2.zero, false, GetCircleSprite());
+        GameObject portraitContainer = CreatePanel(sheet.transform, "PortraitContainer", new Color(0.08f, 0.12f, 0.22f, 0.95f), new Vector2(0.08f, 0.38f), new Vector2(0.35f, 0.78f), Vector2.zero, Vector2.zero, false, GetCircleSprite());
         CreatePanel(portraitContainer.transform, "PortraitBorder", NeonGold * 0.6f, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero, false, GetCircleSprite());
         GameObject portraitImgObj = CreatePanel(portraitContainer.transform, "PortraitImg", Color.white, new Vector2(0.06f, 0.06f), new Vector2(0.94f, 0.94f), Vector2.zero, Vector2.zero, false, GetCircleSprite());
         resultPortraitImage = portraitImgObj.GetComponent<Image>();
 
         // Textos à Direita do Retrato
-        resultNameText = CreateText(sheet.transform, "PrizeName", "RAPOSA ASTUTA", new Vector2(0.38f, 0.62f), new Vector2(0.95f, 0.80f), Vector2.zero, Vector2.zero, 22, Color.white, TextAnchor.MiddleLeft, true);
-        resultBadgeText = CreateText(sheet.transform, "Badge", "★ COMUM ★", new Vector2(0.38f, 0.48f), new Vector2(0.95f, 0.62f), Vector2.zero, Vector2.zero, 15, NeonCyan, TextAnchor.MiddleLeft, true);
-        resultMessageText = CreateText(sheet.transform, "Message", "Adicionado ao seu álbum de coleção!", new Vector2(0.08f, 0.26f), new Vector2(0.95f, 0.40f), Vector2.zero, Vector2.zero, 13, new Color(0.9f, 0.95f, 1f, 0.9f), TextAnchor.MiddleCenter, false);
+        resultNameText = CreateText(sheet.transform, "PrizeName", "RAPOSA ASTUTA", new Vector2(0.38f, 0.60f), new Vector2(0.95f, 0.78f), Vector2.zero, Vector2.zero, 22, Color.white, TextAnchor.MiddleLeft, true);
+        resultBadgeText = CreateText(sheet.transform, "Badge", "★ COMUM ★", new Vector2(0.38f, 0.46f), new Vector2(0.95f, 0.60f), Vector2.zero, Vector2.zero, 15, NeonCyan, TextAnchor.MiddleLeft, true);
+        resultMessageText = CreateText(sheet.transform, "Message", "Adicionado ao seu álbum de coleção!", new Vector2(0.08f, 0.25f), new Vector2(0.95f, 0.39f), Vector2.zero, Vector2.zero, 13, new Color(0.9f, 0.95f, 1f, 0.9f), TextAnchor.MiddleCenter, false);
 
-        // Botão Continuar (52pt, Emerald 3D)
-        CreateArcadeButton(sheet.transform, "ContinueBtn", new Vector2(0.06f, 0.05f), new Vector2(0.94f, 0.23f), Button3DTheme.Emerald, ContinueAfterResult, "CONTINUAR JOGANDO ▶", 18);
+        // Botão Continuar (Candy Verde 3D)
+        CreateArcadeButton(sheet.transform, "ContinueBtn", new Vector2(0.06f, 0.05f), new Vector2(0.94f, 0.22f), Button3DTheme.Emerald, ContinueAfterResult, "CONTINUAR JOGANDO ▶", 18);
 
         parent.gameObject.SetActive(false);
     }
@@ -638,12 +639,12 @@ public sealed class ProfessionalUIController : MonoBehaviour
         Vector2 sheetMin = isP ? new Vector2(0.04f, 0.02f) : new Vector2(0.25f, 0.02f);
         Vector2 sheetMax = isP ? new Vector2(0.96f, 0.32f) : new Vector2(0.75f, 0.38f);
 
-        GameObject sheet = CreatePanel(parent, "GameOverSheet", Color.white, sheetMin, sheetMax, Vector2.zero, Vector2.zero, true, GetUISprite("panel_card_3d", new Vector4(24, 24, 24, 24)));
+        GameObject sheet = CreatePanel(parent, "GameOverSheet", new Color(0.03f, 0.07f, 0.16f, 0.92f), sheetMin, sheetMax, Vector2.zero, Vector2.zero, true, GetUISprite("card_dialog_blue", new Vector4(60, 60, 60, 60)));
 
-        gameOverTitleText = CreateText(sheet.transform, "Title", "FIM DA JOGADA", new Vector2(0.05f, 0.70f), new Vector2(0.95f, 0.92f), Vector2.zero, Vector2.zero, 24, Color.white, TextAnchor.MiddleCenter, true);
-        gameOverMessageText = CreateText(sheet.transform, "Msg", "Você ainda tem fichas restantes!", new Vector2(0.05f, 0.45f), new Vector2(0.95f, 0.68f), Vector2.zero, Vector2.zero, 15, NeonCyan, TextAnchor.MiddleCenter, false);
+        gameOverTitleText = CreateText(sheet.transform, "Title", "FIM DA JOGADA", new Vector2(0.05f, 0.68f), new Vector2(0.95f, 0.90f), Vector2.zero, Vector2.zero, 24, Color.white, TextAnchor.MiddleCenter, true);
+        gameOverMessageText = CreateText(sheet.transform, "Msg", "Você ainda tem fichas restantes!", new Vector2(0.05f, 0.44f), new Vector2(0.95f, 0.66f), Vector2.zero, Vector2.zero, 15, NeonCyan, TextAnchor.MiddleCenter, false);
 
-        GameObject btn = CreateArcadeButton(sheet.transform, "GameOverBtn", new Vector2(0.06f, 0.10f), new Vector2(0.94f, 0.38f), Button3DTheme.Emerald, () => gameOverAction?.Invoke(), "JOGAR NOVAMENTE 🪙", 18);
+        GameObject btn = CreateArcadeButton(sheet.transform, "GameOverBtn", new Vector2(0.06f, 0.08f), new Vector2(0.94f, 0.38f), Button3DTheme.Emerald, () => gameOverAction?.Invoke(), "JOGAR NOVAMENTE", 18, "icon_gold_coin");
         gameOverButtonText = btn.GetComponentInChildren<Text>();
 
         parent.gameObject.SetActive(false);
@@ -661,17 +662,17 @@ public sealed class ProfessionalUIController : MonoBehaviour
         Vector2 sheetMin = isP ? new Vector2(0.04f, 0.02f) : new Vector2(0.18f, 0.02f);
         Vector2 sheetMax = isP ? new Vector2(0.96f, 0.86f) : new Vector2(0.82f, 0.94f);
 
-        GameObject window = CreatePanel(parent, "AlbumWindow", Color.white, sheetMin, sheetMax, Vector2.zero, Vector2.zero, true, GetUISprite("panel_card_3d", new Vector4(24, 24, 24, 24)));
+        GameObject window = CreatePanel(parent, "AlbumWindow", new Color(0.03f, 0.07f, 0.16f, 0.94f), sheetMin, sheetMax, Vector2.zero, Vector2.zero, true, GetUISprite("card_dialog_blue", new Vector4(60, 60, 60, 60)));
 
         CreateText(window.transform, "Header", "🏆 ÁLBUM DE COLEÇÃO", new Vector2(0.05f, 0.915f), new Vector2(0.95f, 0.985f), Vector2.zero, Vector2.zero, isP ? 26 : 30, NeonGold, TextAnchor.MiddleCenter, true);
         albumProgressText = CreateText(window.transform, "ProgressPill", "COLEÇÃO: 0 / 6 DESBLOQUEADOS (0%)", new Vector2(0.05f, 0.855f), new Vector2(0.95f, 0.910f), Vector2.zero, Vector2.zero, 15, NeonCyan, TextAnchor.MiddleCenter, true);
 
         // Grade 2x3
-        GameObject gridObj = CreatePanel(window.transform, "GridContainer", Color.clear, new Vector2(0.04f, 0.12f), new Vector2(0.96f, 0.84f), Vector2.zero, Vector2.zero, false);
+        GameObject gridObj = CreatePanel(window.transform, "GridContainer", Color.clear, new Vector2(0.04f, 0.11f), new Vector2(0.96f, 0.84f), Vector2.zero, Vector2.zero, false);
         albumGridContainer = gridObj.transform;
 
-        // Botão Fechar
-        CreateArcadeButton(window.transform, "CloseAlbumBtn", new Vector2(0.15f, 0.025f), new Vector2(0.85f, 0.100f), Button3DTheme.Sapphire, CloseAlbum, "VOLTAR À MÁQUINA", 16);
+        // Botão Fechar (Candy Vermelho 3D)
+        CreateArcadeButton(window.transform, "CloseAlbumBtn", new Vector2(0.15f, 0.020f), new Vector2(0.85f, 0.095f), Button3DTheme.SanwaRed, CloseAlbum, "VOLTAR À MÁQUINA", 16);
 
         BuildInspectModal(parent);
     }
@@ -740,20 +741,12 @@ public sealed class ProfessionalUIController : MonoBehaviour
             }
             else
             {
-                // Silhueta Escura com '?'
-                GameObject silhFrame = CreatePanel(card.transform, "SilhFrame", new Color(0.03f, 0.05f, 0.09f, 0.95f), new Vector2(0.22f, 0.44f), new Vector2(0.78f, 0.86f), Vector2.zero, Vector2.zero, false, GetCircleSprite());
-                CreatePanel(silhFrame.transform, "Border", Color.gray * 0.2f, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero, false, GetCircleSprite());
-                GameObject silhImg = CreatePanel(silhFrame.transform, "SilhImg", new Color(0.12f, 0.16f, 0.24f, 0.6f), new Vector2(0.04f, 0.04f), new Vector2(0.96f, 0.96f), Vector2.zero, Vector2.zero, false, GetCircleSprite());
-                if (portrait != null)
-                {
-                    Image im = silhImg.GetComponent<Image>();
-                    im.sprite = portrait;
-                    im.color = new Color(0.05f, 0.07f, 0.12f, 0.75f); // Silhueta escura da própria arte
-                }
-                CreateText(silhFrame.transform, "QMark", "?", Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero, 28, new Color(0.6f, 0.7f, 0.9f, 0.5f), TextAnchor.MiddleCenter, true);
+                // Carta Mágica Holográfica da Coleção (UI-pack_Sprite_2_6)
+                GameObject cardMystery = CreatePanel(card.transform, "MysteryCard", Color.white, new Vector2(0.12f, 0.30f), new Vector2(0.88f, 0.92f), Vector2.zero, Vector2.zero, false, GetUISprite("card_mystery_rainbow"));
+                cardMystery.GetComponent<Image>().preserveAspect = true;
 
-                CreateText(card.transform, "Name", "???", new Vector2(0.04f, 0.22f), new Vector2(0.96f, 0.40f), Vector2.zero, Vector2.zero, 14, new Color(0.6f, 0.6f, 0.7f, 0.8f), TextAnchor.MiddleCenter, true);
-                CreateText(card.transform, "Hint", "BLOQUEADO", new Vector2(0.04f, 0.06f), new Vector2(0.96f, 0.22f), Vector2.zero, Vector2.zero, 11, new Color(0.45f, 0.5f, 0.6f, 0.8f), TextAnchor.MiddleCenter, false);
+                CreateText(card.transform, "Name", "???", new Vector2(0.04f, 0.16f), new Vector2(0.96f, 0.28f), Vector2.zero, Vector2.zero, 13, new Color(0.85f, 0.9f, 1f, 0.95f), TextAnchor.MiddleCenter, true);
+                CreateText(card.transform, "Hint", "BLOQUEADO", new Vector2(0.04f, 0.04f), new Vector2(0.96f, 0.16f), Vector2.zero, Vector2.zero, 11, new Color(0.6f, 0.7f, 0.85f, 0.8f), TextAnchor.MiddleCenter, false);
             }
         }
     }
@@ -767,7 +760,7 @@ public sealed class ProfessionalUIController : MonoBehaviour
         Vector2 min = isP ? new Vector2(0.08f, 0.22f) : new Vector2(0.28f, 0.18f);
         Vector2 max = isP ? new Vector2(0.92f, 0.78f) : new Vector2(0.72f, 0.82f);
 
-        GameObject card = CreatePanel(inspectModal.transform, "InspectCard", Color.white, min, max, Vector2.zero, Vector2.zero, true, GetUISprite("panel_card_3d", new Vector4(24, 24, 24, 24)));
+        GameObject card = CreatePanel(inspectModal.transform, "InspectCard", new Color(0.03f, 0.07f, 0.16f, 0.94f), min, max, Vector2.zero, Vector2.zero, true, GetUISprite("card_dialog_blue", new Vector4(60, 60, 60, 60)));
 
         // Retrato em Destaque
         GameObject imgFrame = CreatePanel(card.transform, "InspectFrame", new Color(0.08f, 0.12f, 0.22f, 0.95f), new Vector2(0.35f, 0.64f), new Vector2(0.65f, 0.92f), Vector2.zero, Vector2.zero, false, GetCircleSprite());
@@ -780,7 +773,7 @@ public sealed class ProfessionalUIController : MonoBehaviour
         inspectLoreText = CreateText(card.transform, "Lore", "Descrição da pelúcia...", new Vector2(0.08f, 0.28f), new Vector2(0.92f, 0.46f), Vector2.zero, Vector2.zero, 14, new Color(0.9f, 0.95f, 1f, 0.85f), TextAnchor.MiddleCenter, false);
         inspectStatsText = CreateText(card.transform, "Stats", "Capturas: 0", new Vector2(0.08f, 0.18f), new Vector2(0.92f, 0.28f), Vector2.zero, Vector2.zero, 13, NeonGold, TextAnchor.MiddleCenter, false);
 
-        CreateArcadeButton(card.transform, "CloseInspectBtn", new Vector2(0.18f, 0.04f), new Vector2(0.82f, 0.16f), Button3DTheme.Emerald, () => inspectModal.SetActive(false), "FECHAR", 16);
+        CreateArcadeButton(card.transform, "CloseInspectBtn", new Vector2(0.18f, 0.04f), new Vector2(0.82f, 0.16f), Button3DTheme.SanwaRed, () => inspectModal.SetActive(false), "FECHAR", 16);
     }
 
     private void OpenInspect(CollectionItem item)
@@ -914,14 +907,17 @@ public sealed class ProfessionalUIController : MonoBehaviour
         if (uiSpriteCache.TryGetValue(name, out Sprite cached) && cached != null)
             return cached;
 
-        Sprite sp = Resources.Load<Sprite>($"UI/{name}");
+        // Tenta carregar primeiro do novo KitUI oficial
+        Sprite sp = Resources.Load<Sprite>($"KitUI/{name}");
+        if (sp == null) sp = Resources.Load<Sprite>($"UI/{name}");
         if (sp != null)
         {
             uiSpriteCache[name] = sp;
             return sp;
         }
 
-        Texture2D tex = Resources.Load<Texture2D>($"UI/{name}");
+        Texture2D tex = Resources.Load<Texture2D>($"KitUI/{name}");
+        if (tex == null) tex = Resources.Load<Texture2D>($"UI/{name}");
         if (tex != null)
         {
             sp = Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), new Vector2(0.5f, 0.5f), 100f, 0, SpriteMeshType.FullRect, border);
@@ -933,29 +929,39 @@ public sealed class ProfessionalUIController : MonoBehaviour
     }
 
     // ==================== CRIADORES DE COMPONENTES ESTILIZADOS ====================
-    private GameObject CreateArcadeButton(Transform parent, string name, Vector2 anchorMin, Vector2 anchorMax, Button3DTheme theme, Action onClick, string label = null, int fontSize = 16)
+    private GameObject CreateArcadeButton(Transform parent, string name, Vector2 anchorMin, Vector2 anchorMax, Button3DTheme theme, Action onClick, string label = null, int fontSize = 16, string iconName = null)
     {
         Sprite btnSprite;
         Color labelColor = Color.white;
+        Color outlineColor = new Color(0.02f, 0.15f, 0.05f, 0.95f);
 
         switch (theme)
         {
             case Button3DTheme.Emerald:
-                btnSprite = GetUISprite("btn_emerald_3d", new Vector4(24, 24, 24, 24));
+                btnSprite = GetUISprite("btn_candy_green", new Vector4(70, 35, 70, 28));
                 labelColor = Color.white;
+                outlineColor = new Color(0.04f, 0.25f, 0.06f, 0.95f);
                 break;
             case Button3DTheme.Gold:
-                btnSprite = GetUISprite("btn_gold_3d", new Vector4(24, 24, 24, 24));
-                labelColor = new Color(0.25f, 0.12f, 0.02f, 1f);
+                btnSprite = GetUISprite("btn_candy_gold", new Vector4(70, 35, 70, 28));
+                labelColor = Color.white;
+                outlineColor = new Color(0.35f, 0.16f, 0.01f, 0.95f);
                 break;
             case Button3DTheme.SanwaRed:
-                btnSprite = GetUISprite("btn_sanwa_red_3d", Vector4.zero);
+                btnSprite = GetUISprite("btn_candy_red", new Vector4(70, 35, 70, 28));
                 labelColor = Color.white;
+                outlineColor = new Color(0.35f, 0.02f, 0.04f, 0.95f);
+                break;
+            case Button3DTheme.Purple:
+                btnSprite = GetUISprite("btn_candy_purple", new Vector4(70, 35, 70, 28));
+                labelColor = Color.white;
+                outlineColor = new Color(0.25f, 0.04f, 0.35f, 0.95f);
                 break;
             case Button3DTheme.Sapphire:
             default:
-                btnSprite = GetUISprite("btn_sapphire_3d", new Vector4(24, 24, 24, 24));
-                labelColor = NeonCyan;
+                btnSprite = GetUISprite("btn_candy_cyan", new Vector4(70, 35, 70, 28));
+                labelColor = Color.white;
+                outlineColor = new Color(0.02f, 0.16f, 0.32f, 0.95f);
                 break;
         }
 
@@ -966,14 +972,35 @@ public sealed class ProfessionalUIController : MonoBehaviour
 
         ColorBlock cb = btn.colors;
         cb.normalColor = Color.white;
-        cb.highlightedColor = new Color(1.08f, 1.08f, 1.08f, 1f);
-        cb.pressedColor = new Color(0.82f, 0.82f, 0.82f, 1f);
+        cb.highlightedColor = new Color(1.1f, 1.1f, 1.1f, 1f);
+        cb.pressedColor = new Color(0.85f, 0.85f, 0.85f, 1f);
         cb.fadeDuration = 0.04f;
         btn.colors = cb;
 
+        // Ícone dedicado na lateral esquerda
+        if (!string.IsNullOrEmpty(iconName))
+        {
+            Sprite icSp = GetUISprite(iconName);
+            if (icSp != null)
+            {
+                GameObject icObj = CreatePanel(btnObj.transform, "Icon", Color.white, new Vector2(0.06f, 0.15f), new Vector2(0.26f, 0.85f), Vector2.zero, Vector2.zero, false, icSp);
+                icObj.GetComponent<Image>().preserveAspect = true;
+
+                if (!string.IsNullOrEmpty(label))
+                {
+                    Text txt = CreateText(btnObj.transform, "Label", label, new Vector2(0.24f, 0f), new Vector2(0.96f, 1f), Vector2.zero, Vector2.zero, fontSize, labelColor, TextAnchor.MiddleCenter, true);
+                    Outline ol = txt.GetComponent<Outline>();
+                    if (ol != null) ol.effectColor = outlineColor;
+                }
+                return btnObj;
+            }
+        }
+
         if (!string.IsNullOrEmpty(label))
         {
-            CreateText(btnObj.transform, "Label", label, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero, fontSize, labelColor, TextAnchor.MiddleCenter, true);
+            Text txt = CreateText(btnObj.transform, "Label", label, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero, fontSize, labelColor, TextAnchor.MiddleCenter, true);
+            Outline ol = txt.GetComponent<Outline>();
+            if (ol != null) ol.effectColor = outlineColor;
         }
 
         return btnObj;
