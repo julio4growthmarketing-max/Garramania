@@ -140,6 +140,37 @@ public static class RealisticClawMeshBuilder
             MeshRenderer mr = bladeObj.AddComponent<MeshRenderer>();
             mr.sharedMaterial = mChrome;
 
+            // --- FÍSICA REALISTA: Colliders nos dentes da garra para empurrar e interagir com o monte ---
+            // 1. Collider Superior da Lâmina (cobre o arco superior da curva)
+            GameObject colUpper = new GameObject("ProngCollider_Upper");
+            colUpper.transform.SetParent(bladeObj.transform, false);
+            colUpper.transform.localPosition = new Vector3(0f, -0.26f, 0.28f);
+            colUpper.transform.localRotation = Quaternion.Euler(42f, 0f, 0f);
+            CapsuleCollider capUpper = colUpper.AddComponent<CapsuleCollider>();
+            capUpper.radius = 0.052f;
+            capUpper.height = 0.36f;
+            capUpper.direction = 2; // Z-axis along curve
+            capUpper.isTrigger = false;
+
+            // 2. Collider Inferior da Lâmina (cobre a descida do cesto)
+            GameObject colLower = new GameObject("ProngCollider_Lower");
+            colLower.transform.SetParent(bladeObj.transform, false);
+            colLower.transform.localPosition = new Vector3(0f, -0.66f, 0.36f);
+            colLower.transform.localRotation = Quaternion.Euler(-18f, 0f, 0f);
+            CapsuleCollider capLower = colLower.AddComponent<CapsuleCollider>();
+            capLower.radius = 0.048f;
+            capLower.height = 0.44f;
+            capLower.direction = 2; // Z-axis
+            capLower.isTrigger = false;
+
+            // 3. Collider da Ponta/Garra (o dente em colher que fecha e belisca)
+            GameObject colTip = new GameObject("ProngCollider_Tip");
+            colTip.transform.SetParent(bladeObj.transform, false);
+            colTip.transform.localPosition = new Vector3(0f, -1.02f, 0.04f);
+            SphereCollider capTip = colTip.AddComponent<SphereCollider>();
+            capTip.radius = 0.062f;
+            capTip.isTrigger = false;
+
             // Âncora da Biela no flanco/curva do braço
             GameObject armEar = new GameObject("Arm_LinkageAnchor");
             armEar.transform.SetParent(prongPivot.transform, false);

@@ -174,20 +174,21 @@ public sealed class PrizePileSpawner : MonoBehaviour
         // 4. Configura Rigidbody no wrapper
         Rigidbody body = wrapper.GetComponent<Rigidbody>();
         if (body == null) body = wrapper.AddComponent<Rigidbody>();
-        body.mass = definition.rarity == PrizeRarity.Rare ? 2.2f : definition.rarity == PrizeRarity.Uncommon ? 1.8f : 1.5f;
-        body.linearDamping = 1.2f;
-        body.angularDamping = 1.6f;
+        body.mass = definition.rarity == PrizeRarity.Rare ? 1.40f : definition.rarity == PrizeRarity.Uncommon ? 1.15f : 0.95f;
+        body.linearDamping = 1.25f;
+        body.angularDamping = 0.65f;
         body.collisionDetectionMode = CollisionDetectionMode.Continuous;
         body.interpolation = RigidbodyInterpolation.Interpolate;
-        body.maxAngularVelocity = 10f;
+        body.maxAngularVelocity = 8.0f;
+        body.centerOfMass = new Vector3(0f, -0.06f, 0f);
         body.isKinematic = false;
         body.useGravity = true;
 
         // 5. Adiciona BoxCollider proporcional e sem folga no wrapper
         BoxCollider box = wrapper.AddComponent<BoxCollider>();
         box.size = new Vector3(0.56f, 0.72f, 0.56f);
-        box.center = new Vector3(0f, 0.36f, 0f); // Base do colisor coincide com wrapper.position.y (FloorY)
-        body.centerOfMass = box.center;
+        box.center = new Vector3(0f, 0.36f, 0f);
+        box.sharedMaterial = Prize.GetPlushiePhysicsMaterial();
 
         // 6. Conecta o componente Prize de gameplay
         Prize prize = wrapper.AddComponent<Prize>();
@@ -235,5 +236,6 @@ public sealed class PrizePileSpawner : MonoBehaviour
         floor.transform.position = new Vector3(0.35f, FloorY - 0.06f, 0.35f);
         BoxCollider collider = floor.AddComponent<BoxCollider>();
         collider.size = new Vector3(3.6f, 0.12f, 3.6f);
+        collider.sharedMaterial = Prize.GetPlushiePhysicsMaterial();
     }
 }

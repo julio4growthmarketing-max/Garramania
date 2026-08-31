@@ -18,7 +18,6 @@ public class ClawController : MonoBehaviour
     private LineRenderer cable;
     private GameObject cable3D;
     private const float GANTRY_CEILING_Y = 2.78f;
-    private TrailRenderer trailRenderer;
     private RealisticClawMeshBuilder.ClawRig clawRig;
     private float currentOpenFactor = 1.0f;
     private Coroutine clawAnimationRoutine;
@@ -56,7 +55,7 @@ public class ClawController : MonoBehaviour
     private float frictionCoeff = 0.85f;
 
     [Header("Grip")]
-    [SerializeField, Range(0.3f, 2.0f)] private float baseGripForce = 1.30f;
+    [SerializeField, Range(0.3f, 2.0f)] private float baseGripForce = 1.05f;
     [SerializeField] private float gripLossPerSecondWhileMoving = 0.035f;
     [SerializeField] private float gripLossPerSwayDegree = 0.003f;
 
@@ -64,14 +63,19 @@ public class ClawController : MonoBehaviour
     private Prize currentHeldPrize;
     private float slipTimer;
     private bool isSlipping;
+    private bool earlyAscentJerkApplied;
+    private bool midAscentJerkApplied;
 
     public struct CaptureEvaluation
     {
         public Prize prize;
+        public GrabKind kind;
         public float score;
         public float horizontalAlign;
         public float verticalProximity;
         public float stability;
+        public int prongCount;
+        public Vector3 contactPoint;
         public bool isValid;
     }
 
@@ -92,11 +96,6 @@ public class ClawController : MonoBehaviour
     private Vector3 lastClawVelocity;
     private Vector2 currentSwayAngle;
     private Vector2 swayVelocity;
-    private bool prizeBoardBuilt;
-
-    private const int INITIAL_BOARD_COUNT = 72;
-    private const float PRIZE_FLOOR_Y = -1.325f;
-    private const float PRIZE_AREA_HALF_EXTENT = 1.38f;
 
     void Start()
     {
@@ -121,18 +120,17 @@ public class ClawController : MonoBehaviour
             Debug.LogError("[ClawController] Falha na garra visual: " + ex);
         }
         
-        // Cabo de Aço Realista 3D (Cilindro Metálico com espessura e acabamento industrial)
+        // Cabo de Aço Realista 3D
         cable3D = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
         cable3D.name = "Cabo_Aco_Guindaste_3D";
         Destroy(cable3D.GetComponent<Collider>());
         
         Material mCable = new Material(Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard"));
-        mCable.color = new Color(0.76f, 0.78f, 0.82f, 1.0f); // Aço galvanizado trançado com brilho real
+        mCable.color = new Color(0.76f, 0.78f, 0.82f, 1.0f);
         mCable.SetFloat("_Metallic", 0.95f);
         mCable.SetFloat("_Smoothness", 0.80f);
         cable3D.GetComponent<MeshRenderer>().material = mCable;
 
-        // LineRenderer auxiliar para antialiasing e renderização nítida em qualquer ângulo
         cable = gameObject.AddComponent<LineRenderer>();
         cable.startWidth = 0.024f;
         cable.endWidth = 0.024f;
@@ -140,7 +138,7 @@ public class ClawController : MonoBehaviour
                     ?? Shader.Find("Sprites/Default") 
                     ?? Shader.Find("Universal Render Pipeline/Particles/Unlit");
         cable.material = new Material(sLine != null ? sLine : Shader.Find("Hidden/InternalErrorShader"));
-        cable.material.color = new Color(0.82f, 0.85f, 0.90f, 1.0f); // Cabo prateado visível
+        cable.material.color = new Color(0.82f, 0.85f, 0.90f, 1.0f);
         cable.positionCount = 2;
 
         AtualizarCabo();
@@ -192,14 +190,14 @@ public class ClawController : MonoBehaviour
         bool isMoving = moveInput.sqrMagnitude > 0.01f;
         AudioFeedbackController.Instance?.SetMotorMoving(isMoving);
 
-        // Fliperama Autêntico: jogador manobra a garra no plano horizontal X / Z
+        // Movimentação suave no plano horizontal X / Z
         Vector3 nova = transform.position + new Vector3(moveInput.x, 0f, moveInput.z) * 2.8f * Time.deltaTime;
         nova.x = Mathf.Clamp(nova.x, -LIM_X, LIM_X);
         nova.z = Mathf.Clamp(nova.z, -LIM_Z, LIM_Z);
-        nova.y = LIM_YMAX; // Sempre na altura padrão de mira no topo da vitrine!
+        nova.y = LIM_YMAX;
         transform.position = nova;
 
-        // 🔊 JUICE: Som do servo ao mover
+        // Som do servo ao mover
         if (isMoving && servoSoundTimer <= 0f)
         {
             AudioFeedbackController.Instance?.PlayServo();
@@ -213,10 +211,15 @@ public class ClawController : MonoBehaviour
     {
         Prize prizeToTrack = currentHeldPrize != null ? currentHeldPrize : (premioAgarrado != null ? premioAgarrado.GetComponent<Prize>() : null);
         if (prizeToTrack == null || (prizeToTrack.State != PrizeState.Attached && prizeToTrack.State != PrizeState.Slipping)) return;
-        Transform anchor = carrySocket != null ? carrySocket : clawVisualContainer;
-        if (anchor != null)
+        
+        // APENAS FirmBasket usa fixação rígida no carrySocket. SidePinch e LimbTip usam física pura e joints!
+        if (prizeToTrack.CurrentGrabKind == GrabKind.FirmBasket)
         {
-            prizeToTrack.transform.SetPositionAndRotation(anchor.position, anchor.rotation);
+            Transform anchor = carrySocket != null ? carrySocket : clawVisualContainer;
+            if (anchor != null)
+            {
+                prizeToTrack.transform.position = anchor.position + new Vector3(0f, -0.05f, 0f);
+            }
         }
     }
 
@@ -242,13 +245,12 @@ public class ClawController : MonoBehaviour
         swayVelocity -= swayVelocity * swayDamping * dt;
         currentSwayAngle += swayVelocity * dt;
 
-        clawVisualContainer.localRotation = Quaternion.Euler(currentSwayAngle.x, 0f, currentSwayAngle.y);
+        if (clawVisualContainer != null)
+        {
+            clawVisualContainer.localRotation = Quaternion.Euler(currentSwayAngle.x, 0f, currentSwayAngle.y);
+        }
     }
 
-    /// <summary>
-    /// Inicia o ciclo real de fliperama:
-    /// Desce -> Agarra com física -> Sobe ao teto -> Viaja até a calha -> Solta o prêmio no duto -> Retorna ao centro.
-    /// </summary>
     public void AcionarGarra()
     {
         if (isExecutingCycle) return;
@@ -261,13 +263,15 @@ public class ClawController : MonoBehaviour
     private System.Collections.IEnumerator RotinaCicloFliperama()
     {
         isExecutingCycle = true;
+        earlyAscentJerkApplied = false;
+        midAscentJerkApplied = false;
+
         AudioFeedbackController.Instance?.SetMotorMoving(false);
         CabinetLightingController.Instance?.SetDramaticFocus(true);
         GameSession.Instance?.SetState(GameState.Capturing);
         OnClawStateChanged?.Invoke(true);
 
-        // 1. FASE DE DESCIDA E IMPACTO (Garra desce ABERTA)
-        // Limite de piso para a garra compacta (escala 0.58x, prongs medem ~0.60m)
+        // 1. FASE DE DESCIDA E IMPACTO NO MONTE (Garra desce ABERTA empurrando o monte com colliders reais)
         float floorLimitY = -0.70f;
         float targetY = floorLimitY;
 
@@ -276,7 +280,6 @@ public class ClawController : MonoBehaviour
         RaycastHit hit;
         if (Physics.SphereCast(transform.position, 0.24f, Vector3.down, out hit, 3.5f, mask))
         {
-            // Desce até as pinças abraçarem o corpo da pelúcia (alinhando o berço ao centro de massa)
             targetY = Mathf.Max(hit.point.y - 0.22f, floorLimitY);
         }
 
@@ -292,11 +295,11 @@ public class ClawController : MonoBehaviour
 
         yield return new WaitForSeconds(0.18f);
 
-        // 2. FASE DE FECHAMENTO (Pulso elétrico solenoide N_max)
+        // 2. FASE DE FECHAMENTO (Pulso elétrico solenoide nos dentes)
         FecharGarraFisica();
         yield return new WaitForSeconds(0.45f);
 
-        // 3. FASE DE ELEVAÇÃO (Z) COM REDUÇÃO DE VOLTAGEM PWM & INÉRCIA
+        // 3. FASE DE ELEVAÇÃO (Z) COM JERKS E REDUÇÃO PWM
         GameSession.Instance?.SetState(GameState.Returning);
         float ascentStartY = transform.position.y;
         float totalAscentDist = LIM_YMAX - ascentStartY;
@@ -311,14 +314,25 @@ public class ClawController : MonoBehaviour
                 ? Mathf.Clamp01((transform.position.y - ascentStartY) / totalAscentDist) 
                 : 1.0f;
 
-            // PWM: enfraquecimento magnético gradual do solenoide durante a subida
+            // Jerk na subida: LimbTip sofre tranco forte no início; SidePinch sofre no meio
+            if (!earlyAscentJerkApplied && ascentProgress >= 0.18f)
+            {
+                earlyAscentJerkApplied = true;
+                ApplyEarlyAscentJerk();
+            }
+            if (!midAscentJerkApplied && ascentProgress >= 0.55f)
+            {
+                midAscentJerkApplied = true;
+                ApplyMidAscentJerk();
+            }
+
             UpdateSolenoidPWM(ascentProgress);
             UpdateHeldPrizePhysics();
             AtualizarCabo();
             yield return null;
         }
 
-        // TRANCO DE TOPO: Aceleração/desaceleração inercial brusca ao atingir LIM_YMAX
+        // TRANCO DE TOPO: Aceleração inercial brusca ao atingir o batente superior
         ApplyTopJerkInertia();
         yield return new WaitForSeconds(0.25f);
 
@@ -372,22 +386,72 @@ public class ClawController : MonoBehaviour
 
     private void UpdateSolenoidPWM(float ascentProgress)
     {
-        // Fase 3: Modulação PWM com retenção de voltagem segura para sustentação na subida
         float targetHold = Mathf.Lerp(0.85f, 1.0f, captureQuality);
         currentSolenoidVoltage = Mathf.Lerp(solenoidMaxVoltage, targetHold, Mathf.SmoothStep(0f, 1f, ascentProgress));
+    }
+
+    private void ApplyEarlyAscentJerk()
+    {
+        if (currentHeldPrize == null) return;
+
+        if (currentHeldPrize.CurrentGrabKind == GrabKind.LimbTip)
+        {
+            Debug.Log("[Claw] Tranco inicial de subida em ponta de membro (LimbTip)!");
+            if (currentHeldPrize.Body != null)
+            {
+                currentHeldPrize.Body.AddForce(Vector3.down * 3.8f + Random.insideUnitSphere * 1.5f, ForceMode.Impulse);
+                currentHeldPrize.Body.AddTorque(Random.insideUnitSphere * 4.0f, ForceMode.Impulse);
+            }
+            // 70% de chance de soltar imediatamente no início da subida
+            if (Random.value < 0.70f)
+            {
+                ReleasePrizeWithPhysics();
+            }
+        }
+    }
+
+    private void ApplyMidAscentJerk()
+    {
+        if (currentHeldPrize == null) return;
+
+        if (currentHeldPrize.CurrentGrabKind == GrabKind.SidePinch)
+        {
+            Debug.Log("[Claw] Tranco de meio de subida (SidePinch)!");
+            if (currentHeldPrize.Body != null)
+            {
+                currentHeldPrize.Body.AddForce(Vector3.down * 2.2f + Random.insideUnitSphere * 1.0f, ForceMode.Impulse);
+                currentHeldPrize.Body.AddTorque(Random.insideUnitSphere * 3.0f, ForceMode.Impulse);
+            }
+            if (Random.value < 0.35f)
+            {
+                currentHeldPrize.BeginSlip();
+            }
+        }
     }
 
     private void ApplyTopJerkInertia()
     {
         if (currentHeldPrize == null) return;
 
-        // Tranco Inercial no topo da subida: só solta se a captura foi extremamente raspada na ponta
-        if (captureQuality < 0.28f)
+        if (currentHeldPrize.CurrentGrabKind == GrabKind.LimbTip)
         {
-            Debug.Log($"[Claw] Captura raspada na ponta não resistiu ao tranco do topo! ({captureQuality:P0})");
+            Debug.Log("[Claw] LimbTip não resistiu ao tranco do topo!");
             ReleasePrizeWithPhysics();
-            AudioFeedbackController.Instance?.PlaySlipStart();
-            GameJuice.Instance?.HapticsSlip();
+        }
+        else if (currentHeldPrize.CurrentGrabKind == GrabKind.SidePinch)
+        {
+            if (captureQuality < 0.60f || Random.value < 0.45f)
+            {
+                Debug.Log($"[Claw] SidePinch ({captureQuality:P0}) desarmado pelo tranco do topo!");
+                ReleasePrizeWithPhysics();
+            }
+        }
+        else if (currentHeldPrize.CurrentGrabKind == GrabKind.FirmBasket)
+        {
+            if (captureQuality < 0.25f)
+            {
+                ReleasePrizeWithPhysics();
+            }
         }
     }
 
@@ -405,13 +469,6 @@ public class ClawController : MonoBehaviour
     {
         yield return new WaitForSeconds(delay);
         TryGrabRealistic();
-
-        // Se capturou um prêmio, as pinças curvadas ajustam o abraço firme no corpo da pelúcia
-        if (currentHeldPrize != null)
-        {
-            if (clawAnimationRoutine != null) StopCoroutine(clawAnimationRoutine);
-            clawAnimationRoutine = StartCoroutine(AnimateClaw(0.12f, 0.20f));
-        }
     }
 
     private System.Collections.IEnumerator AnimateClaw(float targetOpen, float duration)
@@ -431,22 +488,40 @@ public class ClawController : MonoBehaviour
         clawRig.SetOpenAmount?.Invoke(currentOpenFactor);
     }
 
+    /// <summary>
+    /// Avalia a geometria de contato REAL entre as 3 lâminas e os prêmios na pilha.
+    /// Decide entre FirmBasket, SidePinch, LimbTip ou ShoveOnly.
+    /// </summary>
     private CaptureEvaluation EvaluateBestCandidate()
     {
-        CaptureEvaluation best = new CaptureEvaluation { score = -1f, isValid = false };
+        CaptureEvaluation best = new CaptureEvaluation { score = -1f, isValid = false, kind = GrabKind.None };
 
-        // O ponto de contato são as pontas das pinças que descem e beliscam a pelúcia
         Vector3 prongTipsPos = transform.position + Vector3.down * 0.70f;
         Vector3 clawPos = transform.position;
 
         int pLayer = LayerMask.NameToLayer("Prize");
         int mask = prizeLayer.value != 0 ? prizeLayer.value : (pLayer != -1 ? (1 << pLayer) : ~0);
 
-        // Perímetro natural de captura abrangendo as 3 pinças abertas (raio 0.65m)
         Collider[] hits = Physics.OverlapSphere(prongTipsPos, 0.65f, mask);
         if (hits == null || hits.Length == 0) return best;
 
         System.Collections.Generic.HashSet<Prize> evaluated = new System.Collections.Generic.HashSet<Prize>();
+
+        // Posições das pontas dos 3 dentes da garra
+        Vector3[] tipPositions = new Vector3[3];
+        for (int i = 0; i < 3; i++)
+        {
+            if (dentes != null && i < dentes.Length && dentes[i] != null)
+            {
+                Transform tip = dentes[i].Find("CurvedBlade_Steel/ProngCollider_Tip");
+                tipPositions[i] = tip != null ? tip.position : dentes[i].position + dentes[i].forward * 0.15f + Vector3.down * 0.45f;
+            }
+            else
+            {
+                float rad = (i * 120f) * Mathf.Deg2Rad;
+                tipPositions[i] = prongTipsPos + new Vector3(Mathf.Sin(rad) * 0.22f, 0f, Mathf.Cos(rad) * 0.22f);
+            }
+        }
 
         foreach (var col in hits)
         {
@@ -454,32 +529,85 @@ public class ClawController : MonoBehaviour
             if (prize == null || evaluated.Contains(prize) || prize.State == PrizeState.Delivered || prize.State == PrizeState.Attached || prize.Body == null) continue;
             evaluated.Add(prize);
 
+            Collider prizeCol = prize.GetComponentInChildren<Collider>();
+            Bounds bounds = prizeCol != null ? prizeCol.bounds : new Bounds(prize.transform.position, Vector3.one * 0.4f);
             Vector3 prizeCoM = prize.Body != null ? prize.Body.worldCenterOfMass : prize.transform.position;
 
-            // Distância radial ao eixo vertical da garra
+            // Contagem de prongs que tocam/envolvem este prêmio
+            int prongsTouching = 0;
+            Vector3 avgContact = Vector3.zero;
+
+            for (int i = 0; i < 3; i++)
+            {
+                Vector3 closest = prizeCol != null ? prizeCol.ClosestPoint(tipPositions[i]) : prizeCoM;
+                float d = Vector3.Distance(tipPositions[i], closest);
+                if (d < 0.28f)
+                {
+                    prongsTouching++;
+                    avgContact += closest;
+                }
+            }
+
+            if (prongsTouching > 0)
+            {
+                avgContact /= prongsTouching;
+            }
+            else
+            {
+                avgContact = prizeCol != null ? prizeCol.ClosestPoint(prongTipsPos) : prizeCoM;
+            }
+
             float horizDist = Vector2.Distance(
                 new Vector2(clawPos.x, clawPos.z),
                 new Vector2(prizeCoM.x, prizeCoM.z)
             );
 
-            // Se estiver além do alcance das pinças (0.52m), desconsidera
-            if (horizDist > 0.52f) continue;
+            // Altura relativa do contato no corpo da pelúcia (0 = pés/base, 1 = topo/cabeça)
+            float relHeight = Mathf.Clamp01((avgContact.y - bounds.min.y) / Mathf.Max(0.01f, bounds.size.y));
+            float horizontalAlign = 1f - Mathf.Clamp01(horizDist / 0.48f);
+            float verticalProximity = 1f - Mathf.Clamp01(Mathf.Abs(prizeCoM.y - prongTipsPos.y) / 0.60f);
 
-            float horizontalAlign = 1f - Mathf.Clamp01(horizDist / 0.52f);
-            float verticalDelta = Mathf.Abs(prizeCoM.y - prongTipsPos.y);
-            float verticalProximity = 1f - Mathf.Clamp01(verticalDelta / 0.65f);
+            GrabKind kind = GrabKind.None;
+            float score = 0f;
 
-            // Qualidade composta da captura
-            float score = (horizontalAlign * 0.65f) + (verticalProximity * 0.35f);
+            // Decisão precisa do GrabKind baseada em geometria de contato
+            if (PlayerEconomyManager.Instance != null && PlayerEconomyManager.Instance.IsGoldenClawActive)
+            {
+                kind = GrabKind.FirmBasket;
+                score = 1.0f;
+            }
+            else if (prongsTouching == 3 && relHeight >= 0.48f && horizDist <= 0.26f)
+            {
+                kind = GrabKind.FirmBasket;
+                score = Mathf.Lerp(0.72f, 0.98f, horizontalAlign * 0.7f + verticalProximity * 0.3f);
+            }
+            else if (prongsTouching >= 2 || (prongsTouching == 3 && relHeight < 0.48f))
+            {
+                kind = GrabKind.SidePinch;
+                score = Mathf.Lerp(0.42f, 0.68f, horizontalAlign * 0.6f + verticalProximity * 0.4f);
+            }
+            else if (prongsTouching == 1 || (prongsTouching >= 1 && horizDist > 0.34f))
+            {
+                kind = GrabKind.LimbTip;
+                score = Mathf.Lerp(0.22f, 0.39f, horizontalAlign * 0.5f + verticalProximity * 0.5f);
+            }
+            else if (horizDist < 0.45f)
+            {
+                kind = GrabKind.ShoveOnly;
+                score = 0.12f;
+            }
 
             if (score > best.score)
             {
                 best.prize = prize;
+                best.kind = kind;
                 best.score = score;
                 best.horizontalAlign = horizontalAlign;
                 best.verticalProximity = verticalProximity;
-                best.stability = 1f;
-                best.isValid = score >= 0.28f;
+                best.prongCount = prongsTouching;
+                best.contactPoint = avgContact;
+                best.stability = kind == GrabKind.FirmBasket ? 1f : (kind == GrabKind.SidePinch ? 0.5f : 0.2f);
+                best.isValid = kind != GrabKind.None && kind != GrabKind.ShoveOnly;
             }
         }
 
@@ -490,6 +618,27 @@ public class ClawController : MonoBehaviour
     {
         CaptureEvaluation eval = EvaluateBestCandidate();
 
+        // Se encostou de raspão (ShoveOnly): empurra a pelúcia no monte e faz o monte se mexer!
+        if (eval.kind == GrabKind.ShoveOnly && eval.prize != null && eval.prize.Body != null)
+        {
+            Vector3 shoveDir = (eval.prize.transform.position - transform.position).normalized + Vector3.down * 0.4f;
+            eval.prize.Body.AddForce(shoveDir * 2.8f, ForceMode.Impulse);
+            eval.prize.Body.AddTorque(Random.insideUnitSphere * 3.5f, ForceMode.Impulse);
+
+            if (clawAnimationRoutine != null) StopCoroutine(clawAnimationRoutine);
+            clawAnimationRoutine = StartCoroutine(AnimateClaw(0.22f, 0.15f));
+
+            AudioFeedbackController.Instance?.PlayClank();
+            AudioFeedbackController.Instance?.PlayNearMiss();
+            GameJuice.Instance?.HapticsLight();
+
+            currentHeldPrize = null;
+            premioAgarrado = null;
+            OnGrabAttempt?.Invoke(false);
+            Debug.Log("[Claw] Dentes rasparam no prêmio (ShoveOnly) — monte empurrado.");
+            return;
+        }
+
         if (!eval.isValid || eval.prize == null)
         {
             currentHeldPrize = null;
@@ -497,7 +646,7 @@ public class ClawController : MonoBehaviour
             OnGrabAttempt?.Invoke(false);
             AudioFeedbackController.Instance?.PlayClank();
             GameJuice.Instance?.HapticsLight();
-            if (eval.score > 0.15f) AudioFeedbackController.Instance?.PlayNearMiss();
+            if (eval.score > 0.10f) AudioFeedbackController.Instance?.PlayNearMiss();
             return;
         }
 
@@ -509,13 +658,15 @@ public class ClawController : MonoBehaviour
 
         if (PlayerEconomyManager.Instance != null && PlayerEconomyManager.Instance.IsGoldenClawActive)
         {
+            eval.kind = GrabKind.FirmBasket;
             eval.score = Mathf.Max(eval.score, 0.95f);
             captureQuality = 1.0f;
             frictionCoeff = 1.8f;
             PlayerEconomyManager.Instance.ConsumeGoldenToken();
-            Debug.Log("[ClawController] 🌟 FICHA DOURADA ATIVA! Força magnética máxima calibrada!");
+            Debug.Log("[ClawController] 🌟 FICHA DOURADA ATIVA! FirmBasket forçado!");
         }
 
+        baseGripForce = 1.05f;
         currentGripForce = baseGripForce * clawForce * Mathf.Lerp(0.85f, 1.20f, eval.score);
         currentHeldPrize = eval.prize;
         premioAgarrado = eval.prize.gameObject;
@@ -524,27 +675,47 @@ public class ClawController : MonoBehaviour
         currentHeldPrize.Attach(
             anchor,
             eval.score,
-            currentGripForce
+            currentGripForce,
+            eval.kind,
+            eval.contactPoint,
+            clawVisualContainer != null ? clawVisualContainer.rotation : transform.rotation
         );
 
         isSlipping = false;
         slipTimer = 0f;
 
+        // Animação proporcional da garra: cesto fecha mais (0.08), pinch fecha na ponta (0.18)
+        float targetClamp = (eval.kind == GrabKind.FirmBasket) ? 0.08f : 0.18f;
+        if (clawAnimationRoutine != null) StopCoroutine(clawAnimationRoutine);
+        clawAnimationRoutine = StartCoroutine(AnimateClaw(targetClamp, 0.20f));
+
         OnGrabAttempt?.Invoke(true);
         AudioFeedbackController.Instance?.PlayGrabSuccess();
-        GameJuice.Instance?.HapticsMedium();
-        GameJuice.Instance?.ScreenShake(0.12f, 0.08f);
-        GameJuice.Instance?.PunchScale(currentHeldPrize.transform, 1.12f, 0.20f);
-        GameJuice.Instance?.PlaySparkles(transform.position);
+
+        if (eval.kind == GrabKind.FirmBasket)
+        {
+            GameJuice.Instance?.HapticsMedium();
+            GameJuice.Instance?.PunchScale(currentHeldPrize.transform, 1.10f, 0.20f);
+            GameJuice.Instance?.PlaySparkles(transform.position);
+        }
+        else if (eval.kind == GrabKind.SidePinch)
+        {
+            GameJuice.Instance?.HapticsMedium();
+            GameJuice.Instance?.ScreenShake(0.09f, 0.10f);
+        }
+        else // LimbTip
+        {
+            GameJuice.Instance?.HapticsSlip(); // Feedback imediato de instabilidade
+        }
 
         var cam = FindFirstObjectByType<ClawCameraController>();
         if (cam != null)
         {
-            cam.Shake(0.11f, 0.13f);
-            cam.PunchFOV(0.7f);
+            cam.Shake(0.10f, 0.12f);
+            cam.PunchFOV(0.5f);
         }
 
-        Debug.Log($"[Claw] Captura bem-sucedida! Score: {eval.score:P0} | Solenoide: {currentSolenoidVoltage:P0} | {currentHeldPrize.prizeId}");
+        Debug.Log($"[Claw] Captura iniciada! Tipo: {eval.kind} | Qualidade: {eval.score:P0} | Prongs: {eval.prongCount} | {currentHeldPrize.prizeId}");
     }
 
     private void UpdateHeldPrizePhysics()
@@ -552,24 +723,41 @@ public class ClawController : MonoBehaviour
         if (currentHeldPrize == null) return;
         if (currentHeldPrize.State == PrizeState.Delivered || currentHeldPrize.State == PrizeState.Dropped) return;
 
-        // Inércia vertical e peso: F_down = m * g
-        float fDown = prizeMass * 9.81f;
+        GrabKind kind = currentHeldPrize.CurrentGrabKind;
 
-        // Força centrífuga e oscilações pendulares
-        float swayRad = currentSwayAngle.magnitude * Mathf.Deg2Rad;
-        float fLateral = prizeMass * (9.81f * Mathf.Sin(swayRad) + swayVelocity.sqrMagnitude * 0.20f);
+        // Calibração de timers e perdas por tipo de pegada
+        float maxSlipDuration = 0.70f;
+        float currentGripLossPerSec = gripLossPerSecondWhileMoving;
+        float currentGripLossPerSway = gripLossPerSwayDegree;
 
-        // Suporte mecânico do cesto formado pelas 3 pinças curvadas:
-        // As lâminas de aço curvadas sustentam o prêmio por baixo
-        float basketSupport = 35.0f * Mathf.Clamp01(captureQuality + 0.30f);
-        float frictionHold = frictionCoeff * (baseGripForce * 22.0f * currentSolenoidVoltage * captureQuality);
-        float totalHold = basketSupport + frictionHold;
+        switch (kind)
+        {
+            case GrabKind.FirmBasket:
+                maxSlipDuration = 0.70f;
+                currentGripLossPerSec = 0.035f;
+                currentGripLossPerSway = 0.003f;
+                break;
+            case GrabKind.SidePinch:
+                maxSlipDuration = 0.35f;
+                currentGripLossPerSec = 0.060f;
+                currentGripLossPerSway = 0.006f; // x2
+                break;
+            case GrabKind.LimbTip:
+                maxSlipDuration = 0.18f;
+                currentGripLossPerSec = 0.100f;
+                currentGripLossPerSway = 0.009f; // x3
+                break;
+        }
 
-        // Se a captura foi segura (score >= 0.28f), o cesto transporta com sucesso
-        bool stillHolding = captureQuality >= 0.28f || (fDown + fLateral) <= totalHold;
+        // Decaimento contínuo do grip com movimento e balanço
+        float movementPenalty = clawVelocity.magnitude * currentGripLossPerSec;
+        float swayPenalty = currentSwayAngle.magnitude * currentGripLossPerSway;
+        currentGripForce -= (movementPenalty + swayPenalty) * Time.deltaTime;
 
-        // Efeito visual: a pelúcia balança naturalmente acompanhando o berço das pinças
-        if (currentHeldPrize != null && currentHeldPrize.State == PrizeState.Attached)
+        bool stillHolding = currentHeldPrize.IsGripSufficient(currentGripForce, swayPenalty, movementPenalty);
+
+        // Se for FirmBasket, mantém suporte com inclinação suave
+        if (kind == GrabKind.FirmBasket && currentHeldPrize.State == PrizeState.Attached)
         {
             Quaternion swayTilt = Quaternion.Euler(currentSwayAngle.x * 0.30f, 180f, currentSwayAngle.y * 0.30f);
             currentHeldPrize.transform.localRotation = Quaternion.Slerp(
@@ -587,16 +775,22 @@ public class ClawController : MonoBehaviour
                 currentHeldPrize.BeginSlip();
                 slipTimer = 0f;
 
+                // Afrouxamento visual dos dentes no slip
+                if (clawRig.SetOpenAmount != null)
+                {
+                    clawRig.SetOpenAmount(Mathf.Clamp01(currentOpenFactor + 0.08f));
+                }
+
                 AudioFeedbackController.Instance?.PlaySlipStart();
                 GameJuice.Instance?.HapticsSlip();
                 var cam = FindFirstObjectByType<ClawCameraController>();
                 cam?.Shake(0.07f, 0.45f);
 
-                Debug.Log($"[Claw] Instabilidade Mecânica: Objeto escorregando.");
+                Debug.Log($"[Claw] Instabilidade Mecânica ({kind}): Objeto escorregando.");
             }
 
             slipTimer += Time.deltaTime;
-            if (slipTimer > 0.45f)
+            if (slipTimer > maxSlipDuration)
             {
                 ReleasePrizeWithPhysics();
             }
@@ -617,25 +811,97 @@ public class ClawController : MonoBehaviour
         premioAgarrado = null;
         isSlipping = false;
 
+        GrabKind kind = p.CurrentGrabKind;
+        Vector3 clawPos = transform.position;
+
+        // 1. Desconecta o prêmio (retoma física e gravidade)
         p.Detach();
 
+        // 2. Temporariamente ignora colisão entre as lâminas da garra e a pelúcia por 0.12s para não telefragar
+        StartCoroutine(IgnoreClawCollisionsRoutine(p, 0.12f));
+
+        // 3. Aplica velocidade herdada e impulso suave de pano escorregando (sem explosão de canhão)
         if (p.Body != null)
         {
-            Vector3 slipDir = (Random.insideUnitSphere + Vector3.down * 1.4f).normalized;
-            p.Body.AddForce(slipDir * 1.8f, ForceMode.Impulse);
-            p.Body.AddTorque(Random.insideUnitSphere * 2.5f, ForceMode.Impulse);
+            Vector3 baseVelocity = clawVelocity * 0.65f;
+
+            // Direção de saída: para baixo + afastamento sutil do centro da garra
+            Vector3 horizDir = (p.transform.position - clawPos);
+            horizDir.y = 0f;
+            if (horizDir.sqrMagnitude < 0.001f) horizDir = Random.insideUnitSphere;
+            horizDir.y = 0f;
+            horizDir.Normalize();
+
+            Vector3 slipDir = (Vector3.down * 0.88f + horizDir * 0.32f).normalized;
+
+            // Velocidade linear e torque calibrados por GrabKind
+            float linearSpeed = 0.55f;
+            float torqueSpeed = 0.85f;
+
+            if (kind == GrabKind.FirmBasket)
+            {
+                linearSpeed = 0.25f;
+                torqueSpeed = 0.40f;
+            }
+            else if (kind == GrabKind.SidePinch)
+            {
+                linearSpeed = 0.55f;
+                torqueSpeed = 0.90f;
+            }
+            else if (kind == GrabKind.LimbTip)
+            {
+                linearSpeed = 0.85f;
+                torqueSpeed = 1.30f;
+            }
+
+            // Se soltou no topo da vitrine
+            if (clawPos.y > LIM_YMAX - 0.15f)
+            {
+                linearSpeed += 0.25f;
+                torqueSpeed += 0.30f;
+            }
+
+            p.Body.linearVelocity = baseVelocity + slipDir * linearSpeed;
+
+            // Torque ao redor do eixo horizontal (tumble natural de pelúcia)
+            Vector3 tumbleAxis = Vector3.Cross(Vector3.up, horizDir).normalized;
+            tumbleAxis += Random.insideUnitSphere * 0.20f;
+            p.Body.angularVelocity = tumbleAxis.normalized * torqueSpeed;
         }
 
-        AudioFeedbackController.Instance?.PlayDropThud();
-        GameJuice.Instance?.HapticsHeavy();
-        GameJuice.Instance?.ScreenShake(0.18f, 0.12f);
+        Debug.Log($"[Claw] Pelúcia ({p.prizeId}, {kind}) solta suavemente com física realista de pano.");
+    }
 
-        var cam = FindFirstObjectByType<ClawCameraController>();
-        cam?.Shake(0.17f, 0.2f);
+    private System.Collections.IEnumerator IgnoreClawCollisionsRoutine(Prize prize, float duration)
+    {
+        if (prize == null) yield break;
+        Collider prizeCol = prize.GetComponentInChildren<Collider>();
+        if (prizeCol == null) yield break;
 
-        SetTrailColorDefault();
+        Collider[] clawColliders = clawVisualContainer != null 
+            ? clawVisualContainer.GetComponentsInChildren<Collider>() 
+            : GetComponentsInChildren<Collider>();
 
-        Debug.Log("[Claw] Prêmio escorregou e caiu.");
+        foreach (var c in clawColliders)
+        {
+            if (c != null && c.enabled && prizeCol != null && prizeCol.enabled)
+            {
+                Physics.IgnoreCollision(c, prizeCol, true);
+            }
+        }
+
+        yield return new WaitForSeconds(duration);
+
+        if (prizeCol != null && prizeCol.enabled)
+        {
+            foreach (var c in clawColliders)
+            {
+                if (c != null && c.enabled && prizeCol != null && prizeCol.enabled)
+                {
+                    Physics.IgnoreCollision(c, prizeCol, false);
+                }
+            }
+        }
     }
 
     private void AbrirGarraFisica()
@@ -645,8 +911,6 @@ public class ClawController : MonoBehaviour
         if (clawAnimationRoutine != null) StopCoroutine(clawAnimationRoutine);
         clawAnimationRoutine = StartCoroutine(AnimateClaw(1.0f, 0.35f));
 
-        SetTrailColorDefault();
-
         Prize p = currentHeldPrize != null ? currentHeldPrize : (premioAgarrado != null ? premioAgarrado.GetComponent<Prize>() : null);
         if (p != null)
         {
@@ -655,7 +919,6 @@ public class ClawController : MonoBehaviour
             isSlipping = false;
             slipTimer = 0f;
 
-            // Marca o prêmio como entregue e registra a vitória na GameSession
             p.MarkDelivered();
             if (GameSession.Instance != null)
             {
@@ -711,7 +974,6 @@ public class ClawController : MonoBehaviour
         if (clawAnimationRoutine != null) StopCoroutine(clawAnimationRoutine);
         currentOpenFactor = 1.0f;
         clawRig.SetOpenAmount?.Invoke(1.0f);
-        SetTrailColorDefault();
         OnClawStateChanged?.Invoke(false);
         
         if (currentHeldPrize != null)
@@ -729,10 +991,8 @@ public class ClawController : MonoBehaviour
         slipTimer = 0f;
     }
 
-    // ====== CONSTRUÇÃO VISUAL DA GARRA MECÂNICA 3D (FAB.COM STYLE) ======
     void ConstruirGarra()
     {
-        // Esconde o cubo original da cena: a garra é formada pelos elementos de alta fidelidade
         MeshRenderer[] rootRenderers = GetComponents<MeshRenderer>();
         foreach (MeshRenderer rendererBase in rootRenderers) rendererBase.enabled = false;
         BoxCollider rootCollider = GetComponent<BoxCollider>();
@@ -742,10 +1002,13 @@ public class ClawController : MonoBehaviour
         GameObject visualContainerObj = new GameObject("Garra_Visual_Sway");
         visualContainerObj.transform.SetParent(transform, false);
         clawVisualContainer = visualContainerObj.transform;
-        // Escala compacta proporcional (58% do tamanho anterior = ~1/3 do volume da garra antiga)
         clawVisualContainer.localScale = Vector3.one * 0.58f;
 
-        // Constrói a nova garra profissional com lâminas curvadas em aço, pistão central e bielas articuladas
+        // Rigidbody cinemático no container para suporte a FixedJoint dos prêmios
+        Rigidbody clawRb = visualContainerObj.AddComponent<Rigidbody>();
+        clawRb.isKinematic = true;
+        clawRb.useGravity = false;
+
         clawRig = RealisticClawMeshBuilder.Build(clawVisualContainer);
         dentes = clawRig.Prongs;
         carrySocket = clawRig.CarrySocket;
@@ -753,7 +1016,6 @@ public class ClawController : MonoBehaviour
 
     void ConstruirGabinete()
     {
-        // 0. ATMOSFERA ARCADE JAPONÊS (Fundo escuro estiloso, sem void cinza)
         Camera mainCam = Camera.main;
         if (mainCam != null)
         {
@@ -763,7 +1025,6 @@ public class ClawController : MonoBehaviour
         RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Flat;
         RenderSettings.ambientLight = new Color(0.18f, 0.20f, 0.28f);
 
-        // 1. GABINETE MODULAR ARQUITETURAL DE ALTA FIDELIDADE (Reutiliza existente ou cria fallback)
         GameObject existingCabinet = GameObject.Find("Gabinete_Arcade_Modular");
         if (existingCabinet == null)
         {
@@ -774,7 +1035,6 @@ public class ClawController : MonoBehaviour
             Debug.Log("[ClawController] Gabinete pré-assado/existente na cena reutilizado.");
         }
 
-        // Remove adesivo amarelo do vidro a pedido do usuário
         GameObject adesivoVidro = GameObject.Find("Adesivo_Instrucoes_Arcade");
         if (adesivoVidro != null)
         {
@@ -782,22 +1042,8 @@ public class ClawController : MonoBehaviour
             Destroy(adesivoVidro);
         }
 
-        // 2. MONTE DE PELÚCIAS: gerenciado pelo PrizePileSpawner físico dedicado
         pileSpawner = gameObject.AddComponent<PrizePileSpawner>();
         pileSpawner.Build();
         Debug.Log("[ClawController] Spawner físico de pelúcias conectado ao gabinete.");
-    }
-
-    void ConfigurarRastroLuminoso()
-    {
-        // Garra 100% mecânica: sem luzes neon ou rastros
-    }
-
-    void SetTrailColorDefault()
-    {
-    }
-
-    void SetTrailColorGrabbing()
-    {
     }
 }
