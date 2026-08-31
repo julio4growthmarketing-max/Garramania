@@ -774,6 +774,14 @@ public class ClawController : MonoBehaviour
             Debug.Log("[ClawController] Gabinete pré-assado/existente na cena reutilizado.");
         }
 
+        // Remove adesivo amarelo do vidro a pedido do usuário
+        GameObject adesivoVidro = GameObject.Find("Adesivo_Instrucoes_Arcade");
+        if (adesivoVidro != null)
+        {
+            adesivoVidro.SetActive(false);
+            Destroy(adesivoVidro);
+        }
+
         // 2. MONTE DE PELÚCIAS: gerenciado pelo PrizePileSpawner físico dedicado
         pileSpawner = gameObject.AddComponent<PrizePileSpawner>();
         pileSpawner.Build();

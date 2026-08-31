@@ -3,16 +3,25 @@ using UnityEngine.EventSystems;
 
 public sealed class HoldInputButton : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, IPointerExitHandler
 {
-    [SerializeField] private float axisValue;
-
-    public void Configure(float value)
+    public enum InputAxis
     {
+        HorizontalX,
+        VerticalZ,
+        VerticalY
+    }
+
+    [SerializeField] private InputAxis axis = InputAxis.VerticalZ;
+    [SerializeField] private float axisValue = 1f;
+
+    public void Configure(InputAxis targetAxis, float value)
+    {
+        axis = targetAxis;
         axisValue = Mathf.Clamp(value, -1f, 1f);
     }
 
     public void OnPointerDown(PointerEventData eventData)
     {
-        InputRouter.Instance?.SetTouchY(axisValue);
+        ApplyAxis(axisValue);
     }
 
     public void OnPointerUp(PointerEventData eventData)
@@ -30,8 +39,26 @@ public sealed class HoldInputButton : MonoBehaviour, IPointerDownHandler, IPoint
         ClearAxis();
     }
 
+    private void ApplyAxis(float val)
+    {
+        if (InputRouter.Instance == null) return;
+        switch (axis)
+        {
+            case InputAxis.HorizontalX:
+                InputRouter.Instance.SetTouchX(val);
+                break;
+            case InputAxis.VerticalZ:
+                InputRouter.Instance.SetTouchZ(val);
+                break;
+            case InputAxis.VerticalY:
+                InputRouter.Instance.SetTouchY(val);
+                break;
+        }
+    }
+
     private void ClearAxis()
     {
-        InputRouter.Instance?.SetTouchY(0f);
+        ApplyAxis(0f);
     }
 }
+

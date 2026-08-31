@@ -51,23 +51,24 @@
         updateBannerVisibility();
       }
 
-      window.alert = function(msg) {
-        console.warn("Intercepted Unity alert:", msg);
-      };
-
-      var buildVer = "20260829_v5";
       var buildUrl = "Build";
-      var loaderUrl = buildUrl + "/Build_Web.loader.js?v=" + buildVer;
+      var loaderUrl = buildUrl + "/Build_Web.loader.js";
       var config = {
         arguments: [],
-        dataUrl: buildUrl + "/Build_Web.data?v=" + buildVer,
-        frameworkUrl: buildUrl + "/Build_Web.framework.js?v=" + buildVer,
-        codeUrl: buildUrl + "/Build_Web.wasm?v=" + buildVer,
+        dataUrl: buildUrl + "/Build_Web.data",
+        frameworkUrl: buildUrl + "/Build_Web.framework.js",
+        codeUrl: buildUrl + "/Build_Web.wasm",
         streamingAssetsUrl: "StreamingAssets",
         companyName: "DefaultCompany",
         productName: "ClawMachine",
         productVersion: "0.1.0",
         showBanner: unityShowBanner,
+        // errorHandler: function(err, url, line) {
+        //    alert("error " + err + " occurred at line " + line);
+        //    // Return 'true' if you handled this error and don't want Unity
+        //    // to process it further, 'false' otherwise.
+        //    return true;
+        // },
       };
 
       // By default, Unity keeps WebGL canvas render target size matched with
@@ -88,24 +89,19 @@
 
       if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
         // Mobile device style: fill the whole browser client area with the game canvas:
+
         var meta = document.createElement('meta');
         meta.name = 'viewport';
-        meta.content = 'width=device-width, height=device-height, initial-scale=1.0, user-scalable=no, shrink-to-fit=yes, viewport-fit=cover';
+        meta.content = 'width=device-width, height=device-height, initial-scale=1.0, user-scalable=no, shrink-to-fit=yes';
         document.getElementsByTagName('head')[0].appendChild(meta);
         document.querySelector("#unity-container").className = "unity-mobile";
         canvas.className = "unity-mobile";
 
-        config.devicePixelRatio = Math.min(window.devicePixelRatio, 1.5);
+        // To lower canvas resolution on mobile devices to gain some
+        // performance, uncomment the following line:
+        // config.devicePixelRatio = 1;
 
-        // Desbloqueia Web Audio no iOS ao primeiro toque
-        window.addEventListener('touchstart', function unlockAudio() {
-          if (window.AudioContext || window.webkitAudioContext) {
-            var ctx = new (window.AudioContext || window.webkitAudioContext)();
-            ctx.resume().then(function() {
-              window.removeEventListener('touchstart', unlockAudio);
-            });
-          }
-        }, { once: true });
+
       } else {
         // Desktop style: Render the game canvas in a window that can be maximized to fullscreen:
         canvas.style.width = "960px";

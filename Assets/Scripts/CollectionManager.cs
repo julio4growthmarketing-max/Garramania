@@ -250,7 +250,86 @@ public sealed class CollectionManager : MonoBehaviour
         return c;
     }
 
+    public int TotalCount => orderedIds.Count;
     public int GetTotalCount() => orderedIds.Count;
 
     public bool IsComplete() => GetUnlockedCount() >= GetTotalCount();
+
+    // ==================== SETS / COLEÇÕES TEMÁTICAS (COLLECT ALL 3) ====================
+    [System.Serializable]
+    public class PrizeSet
+    {
+        public string setId;
+        public string title;
+        public string subtitle;
+        public string[] itemIds;
+        public int rewardTokens;
+        public bool hasClaimedSetReward;
+    }
+
+    private readonly List<PrizeSet> prizeSets = new List<PrizeSet>
+    {
+        new PrizeSet
+        {
+            setId = "jungle_trio",
+            title = "TRIO DA FLORESTA",
+            subtitle = "Raposa Astuta, Ursinho Menta & Peixe Balão",
+            itemIds = new string[] { "Fox", "GreenBear", "BalloonFish" },
+            rewardTokens = 35
+        },
+        new PrizeSet
+        {
+            setId = "legend_trio",
+            title = "MESTRES RAROS",
+            subtitle = "Coala Sonolento, Texugo & Porky Magnata",
+            itemIds = new string[] { "Koala", "Badger", "Porky" },
+            rewardTokens = 60
+        }
+    };
+
+    public List<PrizeSet> GetAllSets()
+    {
+        foreach (var set in prizeSets)
+        {
+            set.hasClaimedSetReward = PlayerPrefs.GetInt("GarraMania_SetClaimed_" + set.setId, 0) == 1;
+        }
+        return prizeSets;
+    }
+
+    public int GetSetProgress(PrizeSet set)
+    {
+        if (set == null || set.itemIds == null) return 0;
+        int count = 0;
+        foreach (var id in set.itemIds)
+        {
+            var it = GetItem(id);
+            if (it != null && it.IsUnlocked) count++;
+        }
+        return count;
+    }
+
+    public bool IsSetComplete(PrizeSet set)
+    {
+        if (set == null || set.itemIds == null) return false;
+        return GetSetProgress(set) >= set.itemIds.Length;
+    }
+
+    public bool ClaimSetReward(PrizeSet set)
+    {
+        if (set == null || !IsSetComplete(set) || set.hasClaimedSetReward) return false;
+        set.hasClaimedSetReward = true;
+        PlayerPrefs.SetInt("GarraMania_SetClaimed_" + set.setId, 1);
+        PlayerPrefs.Save();
+
+        if (GameSession.Instance != null)
+        {
+            GameSession.Instance.AddCredits(set.rewardTokens);
+        }
+
+        AudioFeedbackController.Instance?.PlayCoin();
+        GameJuice.Instance?.HapticsSuccess();
+        OnCollectionUpdated?.Invoke();
+        return true;
+    }
 }
+

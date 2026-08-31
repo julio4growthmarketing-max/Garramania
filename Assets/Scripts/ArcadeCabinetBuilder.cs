@@ -181,11 +181,7 @@ public class ArcadeCabinetBuilder
         Cubo("Vidro_Esquerdo", new Vector3(-2.55f, 0.5f, 0), new Vector3(0.02f, 4.8f, 4.8f), mVidroGabinete, rootParedes);
         Cubo("Vidro_Direito", new Vector3(2.55f, 0.5f, 0), new Vector3(0.02f, 4.8f, 4.8f), mVidroGabinete, rootParedes);
 
-        // Adesivo de Instruções e Decalques Arcade no Vidro.
-        // A face frontal do cubo recebia o UV invertido; a rotação no próprio plano
-        // corrige a placa sem trocar a textura nem afetar o restante do gabinete.
-        GameObject placaInstrucoes = Cubo("Adesivo_Instrucoes_Arcade", new Vector3(1.85f, -0.6f, -2.52f), new Vector3(0.9f, 1.15f, 0.01f), mDecals, rootParedes);
-        placaInstrucoes.transform.localRotation = Quaternion.Euler(0f, 0f, 180f);
+        // Adesivo de instruções no vidro removido a pedido do usuário (ficava atrás dos botões e atrapalhava a visão)
 
         // Colisores Físicos Invisíveis (Bloqueiam as pelúcias mas deixam a câmera 100% livre)
         CriarColisorInvisivel("Colisor_Frontal", new Vector3(0, 0.5f, -2.55f), new Vector3(5.0f, 5.0f, 0.1f), rootParedes);

@@ -835,7 +835,7 @@ MonoBehaviour:
     - line: '|   splashScreenBackgroundSourcePortrait: {instanceID: 0}'
     - line: '|   blurSplashScreenBackground: 1'
     - line: '|   spritePackerPolicy: '
-    - line: '|   webGLMemorySize: 32'
+    - line: '|   webGLMemorySize: 256'
     - line: '|   webGLExceptionSupport: 1'
     - line: '|   webGLNameFilesAsHashes: 0'
     - line: '|   webGLShowDiagnostics: 0'
