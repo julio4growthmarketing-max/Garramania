@@ -99,24 +99,24 @@ public class Prize : MonoBehaviour
         switch (rarity)
         {
             case PrizeRarity.Common: // Fox / GreenBear
-                gripRequired = 0.32f;
-                massFeel = 0.95f;
-                slipperiness = 0.12f;
+                gripRequired = 0.22f;
+                massFeel = 0.90f;
+                slipperiness = 0.10f;
                 break;
             case PrizeRarity.Uncommon: // Koala / BalloonFish
-                gripRequired = 0.45f;
-                massFeel = 1.15f;
-                slipperiness = 0.20f;
+                gripRequired = 0.32f;
+                massFeel = 1.05f;
+                slipperiness = 0.15f;
                 break;
-            case PrizeRarity.Rare: // Porky
-                gripRequired = 0.62f;
-                massFeel = 1.40f;
-                slipperiness = 0.32f;
+            case PrizeRarity.Rare: // Porky / Badger
+                gripRequired = 0.44f;
+                massFeel = 1.25f;
+                slipperiness = 0.22f;
                 break;
             case PrizeRarity.Legendary:
-                gripRequired = 0.82f;
-                massFeel = 1.70f;
-                slipperiness = 0.45f;
+                gripRequired = 0.58f;
+                massFeel = 1.45f;
+                slipperiness = 0.30f;
                 break;
         }
 

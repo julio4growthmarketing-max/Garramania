@@ -399,11 +399,11 @@ public class ClawController : MonoBehaviour
             Debug.Log("[Claw] Tranco inicial de subida em ponta de membro (LimbTip)!");
             if (currentHeldPrize.Body != null)
             {
-                currentHeldPrize.Body.AddForce(Vector3.down * 3.8f + Random.insideUnitSphere * 1.5f, ForceMode.Impulse);
-                currentHeldPrize.Body.AddTorque(Random.insideUnitSphere * 4.0f, ForceMode.Impulse);
+                currentHeldPrize.Body.AddForce(Vector3.down * 2.5f + Random.insideUnitSphere * 1.0f, ForceMode.Impulse);
+                currentHeldPrize.Body.AddTorque(Random.insideUnitSphere * 2.8f, ForceMode.Impulse);
             }
-            // 70% de chance de soltar imediatamente no início da subida
-            if (Random.value < 0.70f)
+            // 40% de chance de soltar no início da subida para dar suspense
+            if (Random.value < 0.40f)
             {
                 ReleasePrizeWithPhysics();
             }
@@ -419,10 +419,10 @@ public class ClawController : MonoBehaviour
             Debug.Log("[Claw] Tranco de meio de subida (SidePinch)!");
             if (currentHeldPrize.Body != null)
             {
-                currentHeldPrize.Body.AddForce(Vector3.down * 2.2f + Random.insideUnitSphere * 1.0f, ForceMode.Impulse);
-                currentHeldPrize.Body.AddTorque(Random.insideUnitSphere * 3.0f, ForceMode.Impulse);
+                currentHeldPrize.Body.AddForce(Vector3.down * 1.8f + Random.insideUnitSphere * 0.8f, ForceMode.Impulse);
+                currentHeldPrize.Body.AddTorque(Random.insideUnitSphere * 2.2f, ForceMode.Impulse);
             }
-            if (Random.value < 0.35f)
+            if (Random.value < 0.20f)
             {
                 currentHeldPrize.BeginSlip();
             }
@@ -440,7 +440,7 @@ public class ClawController : MonoBehaviour
         }
         else if (currentHeldPrize.CurrentGrabKind == GrabKind.SidePinch)
         {
-            if (captureQuality < 0.60f || Random.value < 0.45f)
+            if (captureQuality < 0.45f || Random.value < 0.30f)
             {
                 Debug.Log($"[Claw] SidePinch ({captureQuality:P0}) desarmado pelo tranco do topo!");
                 ReleasePrizeWithPhysics();
@@ -448,7 +448,7 @@ public class ClawController : MonoBehaviour
         }
         else if (currentHeldPrize.CurrentGrabKind == GrabKind.FirmBasket)
         {
-            if (captureQuality < 0.25f)
+            if (captureQuality < 0.20f)
             {
                 ReleasePrizeWithPhysics();
             }
@@ -570,28 +570,28 @@ public class ClawController : MonoBehaviour
             GrabKind kind = GrabKind.None;
             float score = 0f;
 
-            // Decisão precisa do GrabKind baseada em geometria de contato
+            // Decisão precisa do GrabKind baseada em geometria de contato (Calibrado para mira gratificante)
             if (PlayerEconomyManager.Instance != null && PlayerEconomyManager.Instance.IsGoldenClawActive)
             {
                 kind = GrabKind.FirmBasket;
                 score = 1.0f;
             }
-            else if (prongsTouching == 3 && relHeight >= 0.48f && horizDist <= 0.26f)
+            else if (prongsTouching >= 2 && relHeight >= 0.30f && horizDist <= 0.36f)
             {
                 kind = GrabKind.FirmBasket;
-                score = Mathf.Lerp(0.72f, 0.98f, horizontalAlign * 0.7f + verticalProximity * 0.3f);
+                score = Mathf.Lerp(0.76f, 0.98f, horizontalAlign * 0.7f + verticalProximity * 0.3f);
             }
-            else if (prongsTouching >= 2 || (prongsTouching == 3 && relHeight < 0.48f))
+            else if (prongsTouching >= 2 || (prongsTouching == 1 && horizDist <= 0.38f))
             {
                 kind = GrabKind.SidePinch;
-                score = Mathf.Lerp(0.42f, 0.68f, horizontalAlign * 0.6f + verticalProximity * 0.4f);
+                score = Mathf.Lerp(0.48f, 0.72f, horizontalAlign * 0.6f + verticalProximity * 0.4f);
             }
-            else if (prongsTouching == 1 || (prongsTouching >= 1 && horizDist > 0.34f))
+            else if (prongsTouching == 1 || horizDist <= 0.46f)
             {
                 kind = GrabKind.LimbTip;
-                score = Mathf.Lerp(0.22f, 0.39f, horizontalAlign * 0.5f + verticalProximity * 0.5f);
+                score = Mathf.Lerp(0.25f, 0.42f, horizontalAlign * 0.5f + verticalProximity * 0.5f);
             }
-            else if (horizDist < 0.45f)
+            else if (horizDist < 0.52f)
             {
                 kind = GrabKind.ShoveOnly;
                 score = 0.12f;
@@ -606,7 +606,7 @@ public class ClawController : MonoBehaviour
                 best.verticalProximity = verticalProximity;
                 best.prongCount = prongsTouching;
                 best.contactPoint = avgContact;
-                best.stability = kind == GrabKind.FirmBasket ? 1f : (kind == GrabKind.SidePinch ? 0.5f : 0.2f);
+                best.stability = kind == GrabKind.FirmBasket ? 1f : (kind == GrabKind.SidePinch ? 0.65f : 0.30f);
                 best.isValid = kind != GrabKind.None && kind != GrabKind.ShoveOnly;
             }
         }
@@ -653,8 +653,8 @@ public class ClawController : MonoBehaviour
         // Parâmetros de Captura
         captureQuality = eval.score;
         currentSolenoidVoltage = solenoidMaxVoltage;
-        prizeMass = eval.prize.Body != null ? eval.prize.Body.mass : 1.8f;
-        frictionCoeff = 0.85f;
+        prizeMass = eval.prize.Body != null ? eval.prize.Body.mass : 1.5f;
+        frictionCoeff = 0.90f;
 
         if (PlayerEconomyManager.Instance != null && PlayerEconomyManager.Instance.IsGoldenClawActive)
         {
@@ -666,8 +666,8 @@ public class ClawController : MonoBehaviour
             Debug.Log("[ClawController] 🌟 FICHA DOURADA ATIVA! FirmBasket forçado!");
         }
 
-        baseGripForce = 1.05f;
-        currentGripForce = baseGripForce * clawForce * Mathf.Lerp(0.85f, 1.20f, eval.score);
+        baseGripForce = 1.30f;
+        currentGripForce = baseGripForce * clawForce * Mathf.Lerp(0.88f, 1.25f, eval.score);
         currentHeldPrize = eval.prize;
         premioAgarrado = eval.prize.gameObject;
 
@@ -705,7 +705,7 @@ public class ClawController : MonoBehaviour
         }
         else // LimbTip
         {
-            GameJuice.Instance?.HapticsSlip(); // Feedback imediato de instabilidade
+            GameJuice.Instance?.HapticsSlip();
         }
 
         var cam = FindFirstObjectByType<ClawCameraController>();
@@ -911,14 +911,15 @@ public class ClawController : MonoBehaviour
         if (clawAnimationRoutine != null) StopCoroutine(clawAnimationRoutine);
         clawAnimationRoutine = StartCoroutine(AnimateClaw(1.0f, 0.35f));
 
-        Prize p = currentHeldPrize != null ? currentHeldPrize : (premioAgarrado != null ? premioAgarrado.GetComponent<Prize>() : null);
-        if (p != null)
-        {
-            currentHeldPrize = null;
-            premioAgarrado = null;
-            isSlipping = false;
-            slipTimer = 0f;
+        // Só entrega se o prêmio REALMENTE chegou preso na garra
+        Prize p = currentHeldPrize;
+        currentHeldPrize = null;
+        premioAgarrado = null;
+        isSlipping = false;
+        slipTimer = 0f;
 
+        if (p != null && p.State == PrizeState.Attached)
+        {
             p.MarkDelivered();
             if (GameSession.Instance != null)
             {

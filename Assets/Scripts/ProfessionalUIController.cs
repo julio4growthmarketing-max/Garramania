@@ -878,10 +878,10 @@ public sealed class ProfessionalUIController : MonoBehaviour
         GameObject bannerObj = CreatePanel(sheet.transform, "CelebrationBanner", Color.white, new Vector2(0.06f, 0.82f), new Vector2(0.94f, 0.98f), Vector2.zero, Vector2.zero, false, GetUISprite("banner_ribbon_orange", new Vector4(40, 20, 40, 20)));
         resultTitleText = CreateText(bannerObj.transform, "Title", "🎉 PRÊMIO CAPTURADO!", Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero, 22, Color.white, TextAnchor.MiddleCenter, true);
 
-        GameObject portraitContainer = CreatePanel(sheet.transform, "PortraitContainer", ColorBgDeepNavy, new Vector2(0.08f, 0.36f), new Vector2(0.38f, 0.78f), Vector2.zero, Vector2.zero, false, GetCircleSprite());
-        CreatePanel(portraitContainer.transform, "PortraitBorder", ColorNeonGold, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero, false, GetCircleSprite());
-        GameObject portraitImgObj = CreatePanel(portraitContainer.transform, "PortraitImg", Color.white, new Vector2(0.06f, 0.06f), new Vector2(0.94f, 0.94f), Vector2.zero, Vector2.zero, false, GetCircleSprite());
+        GameObject portraitContainer = CreatePanel(sheet.transform, "PortraitContainer", Color.clear, new Vector2(0.06f, 0.32f), new Vector2(0.38f, 0.80f), Vector2.zero, Vector2.zero, false);
+        GameObject portraitImgObj = CreatePanel(portraitContainer.transform, "PortraitImg", Color.white, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero, false);
         resultPortraitImage = portraitImgObj.GetComponent<Image>();
+        if (resultPortraitImage != null) resultPortraitImage.preserveAspect = true;
 
         resultNameText = CreateText(sheet.transform, "PrizeName", "RAPOSA ASTUTA", new Vector2(0.40f, 0.60f), new Vector2(0.95f, 0.78f), Vector2.zero, Vector2.zero, 24, Color.white, TextAnchor.MiddleLeft, true);
         resultBadgeText = CreateText(sheet.transform, "Badge", "★ COMUM ★", new Vector2(0.40f, 0.44f), new Vector2(0.95f, 0.60f), Vector2.zero, Vector2.zero, 16, ColorNeonCyan, TextAnchor.MiddleLeft, true);
