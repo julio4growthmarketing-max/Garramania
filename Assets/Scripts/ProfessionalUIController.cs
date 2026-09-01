@@ -1183,7 +1183,8 @@ public sealed class ProfessionalUIController : MonoBehaviour
                 break;
             case Button3DTheme.WhiteGhost:
                 btnSprite = GetWhiteGhostSprite();
-                labelColor = Color.white;
+                labelColor = new Color(0.10f, 0.14f, 0.24f, 1f);
+                outlineColor = Color.clear;
                 break;
             case Button3DTheme.Sapphire:
             default:
@@ -1288,110 +1289,101 @@ public sealed class ProfessionalUIController : MonoBehaviour
         return text;
     }
 
+    // ==================== PROCEDURAL 9-SLICED 3D ARCADE BUTTON SPRITES ====================
     public static Sprite GetGradientPinkPurpleSprite()
     {
         if (gradientPinkPurpleSprite != null) return gradientPinkPurpleSprite;
-        int w = 64; int h = 64; int r = 18;
-        Texture2D tex = new Texture2D(w, h, TextureFormat.RGBA32, false);
-        tex.filterMode = FilterMode.Bilinear;
-        Color[] cols = new Color[w * h];
-        Color pink = new Color(1.0f, 0.25f, 0.62f, 1f); Color purple = new Color(0.55f, 0.25f, 0.98f, 1f);
-        for (int y = 0; y < h; y++)
-        {
-            float t = (float)y / (h - 1);
-            Color rowCol = Color.Lerp(purple, pink, t);
-            for (int x = 0; x < w; x++)
-            {
-                int dx = Mathf.Min(x, w - 1 - x); int dy = Mathf.Min(y, h - 1 - y);
-                if (dx < r && dy < r)
-                {
-                    float dist = Vector2.Distance(new Vector2(dx, dy), new Vector2(r, r));
-                    float alpha = Mathf.Clamp01(r - dist + 0.5f);
-                    cols[y * w + x] = new Color(rowCol.r, rowCol.g, rowCol.b, alpha);
-                }
-                else cols[y * w + x] = rowCol;
-            }
-        }
-        tex.SetPixels(cols); tex.Apply();
-        gradientPinkPurpleSprite = Sprite.Create(tex, new Rect(0, 0, w, h), new Vector2(0.5f, 0.5f), 100f, 0, SpriteMeshType.FullRect, new Vector4(r, r, r, r));
+        gradientPinkPurpleSprite = Create3DButtonSprite(
+            new Color(1.0f, 0.32f, 0.68f, 1f),
+            new Color(0.62f, 0.22f, 0.98f, 1f),
+            new Color(0.38f, 0.08f, 0.65f, 1f)
+        );
         return gradientPinkPurpleSprite;
     }
 
     public static Sprite GetGreenBuySprite()
     {
         if (greenBuySprite != null) return greenBuySprite;
-        int w = 64; int h = 64; int r = 18;
-        Texture2D tex = new Texture2D(w, h, TextureFormat.RGBA32, false);
-        tex.filterMode = FilterMode.Bilinear;
-        Color[] cols = new Color[w * h];
-        Color greenTop = new Color(0.15f, 0.95f, 0.48f, 1f); Color greenBot = new Color(0.08f, 0.75f, 0.35f, 1f);
-        for (int y = 0; y < h; y++)
-        {
-            float t = (float)y / (h - 1);
-            Color rowCol = Color.Lerp(greenBot, greenTop, t);
-            for (int x = 0; x < w; x++)
-            {
-                int dx = Mathf.Min(x, w - 1 - x); int dy = Mathf.Min(y, h - 1 - y);
-                if (dx < r && dy < r)
-                {
-                    float dist = Vector2.Distance(new Vector2(dx, dy), new Vector2(r, r));
-                    float alpha = Mathf.Clamp01(r - dist + 0.5f);
-                    cols[y * w + x] = new Color(rowCol.r, rowCol.g, rowCol.b, alpha);
-                }
-                else cols[y * w + x] = rowCol;
-            }
-        }
-        tex.SetPixels(cols); tex.Apply();
-        greenBuySprite = Sprite.Create(tex, new Rect(0, 0, w, h), new Vector2(0.5f, 0.5f), 100f, 0, SpriteMeshType.FullRect, new Vector4(r, r, r, r));
+        greenBuySprite = Create3DButtonSprite(
+            new Color(0.18f, 0.96f, 0.52f, 1f),
+            new Color(0.08f, 0.72f, 0.32f, 1f),
+            new Color(0.04f, 0.45f, 0.18f, 1f)
+        );
         return greenBuySprite;
     }
 
     public static Sprite GetYellowDropSprite()
     {
         if (yellowDropSprite != null) return yellowDropSprite;
-        int size = 96; float r = size * 0.5f;
-        Texture2D tex = new Texture2D(size, size, TextureFormat.RGBA32, false);
-        tex.filterMode = FilterMode.Bilinear;
-        Color[] cols = new Color[size * size];
-        Vector2 center = new Vector2(r - 0.5f, r - 0.5f);
-        Color goldTop = new Color(1.0f, 0.92f, 0.20f, 1f); Color goldBot = new Color(0.98f, 0.75f, 0.05f, 1f);
-        for (int y = 0; y < size; y++)
-        {
-            float t = (float)y / (size - 1);
-            Color baseCol = Color.Lerp(goldBot, goldTop, t);
-            for (int x = 0; x < size; x++)
-            {
-                float dist = Vector2.Distance(new Vector2(x, y), center);
-                float alpha = Mathf.Clamp01(r - dist + 0.5f);
-                cols[y * size + x] = new Color(baseCol.r, baseCol.g, baseCol.b, alpha);
-            }
-        }
-        tex.SetPixels(cols); tex.Apply();
-        yellowDropSprite = Sprite.Create(tex, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f), 100f);
+        yellowDropSprite = Create3DButtonSprite(
+            new Color(1.0f, 0.94f, 0.25f, 1f),
+            new Color(0.98f, 0.72f, 0.05f, 1f),
+            new Color(0.70f, 0.45f, 0.02f, 1f)
+        );
         return yellowDropSprite;
     }
 
     public static Sprite GetWhiteGhostSprite()
     {
         if (whiteGhostSprite != null) return whiteGhostSprite;
-        int size = 64; float r = size * 0.5f;
-        Texture2D tex = new Texture2D(size, size, TextureFormat.RGBA32, false);
+        whiteGhostSprite = Create3DButtonSprite(
+            new Color(0.96f, 0.97f, 1.0f, 1f),
+            new Color(0.78f, 0.82f, 0.90f, 1f),
+            new Color(0.48f, 0.54f, 0.65f, 1f)
+        );
+        return whiteGhostSprite;
+    }
+
+    public static Sprite Create3DButtonSprite(Color topCol, Color botCol, Color bevelDarkCol, int w = 64, int h = 64, int r = 16)
+    {
+        Texture2D tex = new Texture2D(w, h, TextureFormat.RGBA32, false);
         tex.filterMode = FilterMode.Bilinear;
-        Color[] cols = new Color[size * size];
-        Vector2 center = new Vector2(r - 0.5f, r - 0.5f);
-        Color ghost = new Color(0.92f, 0.94f, 1.0f, 0.95f);
-        for (int y = 0; y < size; y++)
+        Color[] cols = new Color[w * h];
+
+        for (int y = 0; y < h; y++)
         {
-            for (int x = 0; x < size; x++)
+            float t = (float)y / (h - 1);
+            Color rowCol = Color.Lerp(botCol, topCol, t);
+
+            for (int x = 0; x < w; x++)
             {
-                float dist = Vector2.Distance(new Vector2(x, y), center);
-                float alpha = Mathf.Clamp01(r - dist + 0.5f) * 0.95f;
-                cols[y * size + x] = new Color(ghost.r, ghost.g, ghost.b, alpha);
+                int dx = Mathf.Min(x, w - 1 - x);
+                int dy = Mathf.Min(y, h - 1 - y);
+
+                float alpha = 1f;
+                if (dx < r && dy < r)
+                {
+                    float dist = Vector2.Distance(new Vector2(dx, dy), new Vector2(r, r));
+                    alpha = Mathf.Clamp01(r - dist + 0.5f);
+                }
+
+                Color c = rowCol;
+                // Bevel inferior escurecido (efeito 3D profundidade arcade)
+                if (y < 8)
+                {
+                    c = Color.Lerp(bevelDarkCol, c, (float)y / 8f);
+                }
+                // Brilho no topo
+                else if (y > h - 6)
+                {
+                    c = Color.Lerp(c, Color.white, 0.35f);
+                }
+
+                cols[y * w + x] = new Color(c.r, c.g, c.b, c.a * alpha);
             }
         }
-        tex.SetPixels(cols); tex.Apply();
-        whiteGhostSprite = Sprite.Create(tex, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f), 100f);
-        return whiteGhostSprite;
+        tex.SetPixels(cols);
+        tex.Apply();
+
+        return Sprite.Create(
+            tex,
+            new Rect(0, 0, w, h),
+            new Vector2(0.5f, 0.5f),
+            100f,
+            0,
+            SpriteMeshType.FullRect,
+            new Vector4(r + 2, r + 2, r + 2, r + 2)
+        );
     }
 
     public static Sprite GetRoundedRectSprite()

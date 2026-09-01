@@ -124,7 +124,7 @@ public class Prize : MonoBehaviour
     }
 
     /// <summary>
-    /// Attach realista com suporte a FirmBasket, SidePinch e LimbTip.
+    /// Attach realista e estável com suporte visual a FirmBasket, SidePinch e LimbTip.
     /// </summary>
     public void Attach(Transform anchor, float quality, float gripForce, GrabKind kind, Vector3 contactPoint, Quaternion currentClawRot)
     {
@@ -139,68 +139,45 @@ public class Prize : MonoBehaviour
 
         DestroyJoint();
 
-        if (kind == GrabKind.FirmBasket)
+        if (Body != null)
         {
-            if (Body != null)
-            {
-                Body.linearVelocity = Vector3.zero;
-                Body.angularVelocity = Vector3.zero;
-                Body.isKinematic = true;
-                Body.useGravity = false;
-            }
+            Body.linearVelocity = Vector3.zero;
+            Body.angularVelocity = Vector3.zero;
+            Body.isKinematic = true;
+            Body.useGravity = false;
+        }
 
-            // Preserva a rotação relativa do fechamento (NÃO força 0, 180, 0)
-            Quaternion relativeRot = Quaternion.Inverse(anchor.rotation) * transform.rotation;
-            transform.SetParent(anchor, false);
+        // Calcula rotação relativa no instante da pegada
+        Quaternion relativeRot = Quaternion.Inverse(anchor.rotation) * transform.rotation;
+        transform.SetParent(anchor, false);
 
-            Vector3 pScale = anchor.lossyScale;
-            if (pScale.x > 0.001f && pScale.y > 0.001f && pScale.z > 0.001f)
-            {
-                transform.localScale = new Vector3(1f / pScale.x, 1f / pScale.y, 1f / pScale.z);
-            }
-            else
-            {
-                transform.localScale = Vector3.one;
-            }
-
-            transform.localPosition = new Vector3(0f, -0.05f, 0f);
-            transform.localRotation = relativeRot;
+        Vector3 pScale = anchor.lossyScale;
+        if (pScale.x > 0.001f && pScale.y > 0.001f && pScale.z > 0.001f)
+        {
+            transform.localScale = new Vector3(1f / pScale.x, 1f / pScale.y, 1f / pScale.z);
         }
         else
         {
-            // SidePinch ou LimbTip: física ativa com FixedJoint articulado
-            transform.SetParent(null, true);
             transform.localScale = Vector3.one;
+        }
 
-            if (Body != null)
-            {
-                Body.isKinematic = false;
-                Body.useGravity = true;
-                Body.linearDamping = 0.50f;
-                Body.angularDamping = 1.20f;
-                Body.WakeUp();
-
-                Rigidbody anchorRb = anchor.GetComponentInParent<Rigidbody>();
-                if (anchorRb != null)
-                {
-                    CurrentJoint = gameObject.AddComponent<FixedJoint>();
-                    CurrentJoint.connectedBody = anchorRb;
-                    CurrentJoint.autoConfigureConnectedAnchor = false;
-                    CurrentJoint.anchor = transform.InverseTransformPoint(contactPoint);
-                    CurrentJoint.connectedAnchor = anchor.InverseTransformPoint(contactPoint);
-
-                    if (kind == GrabKind.SidePinch)
-                    {
-                        CurrentJoint.breakForce = 18f;
-                        CurrentJoint.breakTorque = 14f;
-                    }
-                    else // LimbTip
-                    {
-                        CurrentJoint.breakForce = 6.5f;
-                        CurrentJoint.breakTorque = 4.5f;
-                    }
-                }
-            }
+        // Configuração posicional e angular por GrabKind (visualmente autêntico de fliperama)
+        if (kind == GrabKind.FirmBasket)
+        {
+            transform.localPosition = new Vector3(0f, -0.06f, 0f);
+            transform.localRotation = relativeRot;
+        }
+        else if (kind == GrabKind.SidePinch)
+        {
+            // Pega de lado: pelúcia fica levemente inclinada e deslocada para um lado da garra
+            transform.localPosition = new Vector3(0.06f, -0.12f, 0.04f);
+            transform.localRotation = relativeRot * Quaternion.Euler(12f, 0f, 18f);
+        }
+        else // LimbTip
+        {
+            // Pega pela ponta/membro: pendurada bem abaixo com inclinação acentuada
+            transform.localPosition = new Vector3(0.12f, -0.22f, 0.06f);
+            transform.localRotation = relativeRot * Quaternion.Euler(32f, 12f, 22f);
         }
     }
 

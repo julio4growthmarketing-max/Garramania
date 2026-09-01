@@ -1,4 +1,5 @@
 using UnityEngine;
+using System.Collections.Generic;
 
 public class ClawController : MonoBehaviour
 {
@@ -494,34 +495,13 @@ public class ClawController : MonoBehaviour
     /// </summary>
     private CaptureEvaluation EvaluateBestCandidate()
     {
-        CaptureEvaluation best = new CaptureEvaluation { score = -1f, isValid = false, kind = GrabKind.None };
+        CaptureEvaluation best = new CaptureEvaluation { isValid = false, score = -1f, kind = GrabKind.None };
 
-        Vector3 prongTipsPos = transform.position + Vector3.down * 0.70f;
         Vector3 clawPos = transform.position;
+        Vector3 prongTipsPos = carrySocket != null ? carrySocket.position : (clawVisualContainer != null ? clawVisualContainer.position + Vector3.down * 0.35f : clawPos + Vector3.down * 0.35f);
 
-        int pLayer = LayerMask.NameToLayer("Prize");
-        int mask = prizeLayer.value != 0 ? prizeLayer.value : (pLayer != -1 ? (1 << pLayer) : ~0);
-
-        Collider[] hits = Physics.OverlapSphere(prongTipsPos, 0.65f, mask);
-        if (hits == null || hits.Length == 0) return best;
-
-        System.Collections.Generic.HashSet<Prize> evaluated = new System.Collections.Generic.HashSet<Prize>();
-
-        // Posições das pontas dos 3 dentes da garra
-        Vector3[] tipPositions = new Vector3[3];
-        for (int i = 0; i < 3; i++)
-        {
-            if (dentes != null && i < dentes.Length && dentes[i] != null)
-            {
-                Transform tip = dentes[i].Find("CurvedBlade_Steel/ProngCollider_Tip");
-                tipPositions[i] = tip != null ? tip.position : dentes[i].position + dentes[i].forward * 0.15f + Vector3.down * 0.45f;
-            }
-            else
-            {
-                float rad = (i * 120f) * Mathf.Deg2Rad;
-                tipPositions[i] = prongTipsPos + new Vector3(Mathf.Sin(rad) * 0.22f, 0f, Mathf.Cos(rad) * 0.22f);
-            }
-        }
+        Collider[] hits = Physics.OverlapSphere(prongTipsPos, 0.75f, prizeLayer);
+        HashSet<Prize> evaluated = new HashSet<Prize>();
 
         foreach (var col in hits)
         {
@@ -529,72 +509,38 @@ public class ClawController : MonoBehaviour
             if (prize == null || evaluated.Contains(prize) || prize.State == PrizeState.Delivered || prize.State == PrizeState.Attached || prize.Body == null) continue;
             evaluated.Add(prize);
 
-            Collider prizeCol = prize.GetComponentInChildren<Collider>();
-            Bounds bounds = prizeCol != null ? prizeCol.bounds : new Bounds(prize.transform.position, Vector3.one * 0.4f);
             Vector3 prizeCoM = prize.Body != null ? prize.Body.worldCenterOfMass : prize.transform.position;
-
-            // Contagem de prongs que tocam/envolvem este prêmio
-            int prongsTouching = 0;
-            Vector3 avgContact = Vector3.zero;
-
-            for (int i = 0; i < 3; i++)
-            {
-                Vector3 closest = prizeCol != null ? prizeCol.ClosestPoint(tipPositions[i]) : prizeCoM;
-                float d = Vector3.Distance(tipPositions[i], closest);
-                if (d < 0.28f)
-                {
-                    prongsTouching++;
-                    avgContact += closest;
-                }
-            }
-
-            if (prongsTouching > 0)
-            {
-                avgContact /= prongsTouching;
-            }
-            else
-            {
-                avgContact = prizeCol != null ? prizeCol.ClosestPoint(prongTipsPos) : prizeCoM;
-            }
 
             float horizDist = Vector2.Distance(
                 new Vector2(clawPos.x, clawPos.z),
                 new Vector2(prizeCoM.x, prizeCoM.z)
             );
+            float vertDist = Mathf.Abs(prongTipsPos.y - prizeCoM.y);
 
-            // Altura relativa do contato no corpo da pelúcia (0 = pés/base, 1 = topo/cabeça)
-            float relHeight = Mathf.Clamp01((avgContact.y - bounds.min.y) / Mathf.Max(0.01f, bounds.size.y));
-            float horizontalAlign = 1f - Mathf.Clamp01(horizDist / 0.48f);
-            float verticalProximity = 1f - Mathf.Clamp01(Mathf.Abs(prizeCoM.y - prongTipsPos.y) / 0.60f);
+            if (horizDist > 0.58f || vertDist > 0.85f) continue;
 
             GrabKind kind = GrabKind.None;
             float score = 0f;
 
-            // Decisão precisa do GrabKind baseada em geometria de contato (Calibrado para mira gratificante)
             if (PlayerEconomyManager.Instance != null && PlayerEconomyManager.Instance.IsGoldenClawActive)
             {
                 kind = GrabKind.FirmBasket;
                 score = 1.0f;
             }
-            else if (prongsTouching >= 2 && relHeight >= 0.30f && horizDist <= 0.36f)
+            else if (horizDist <= 0.32f)
             {
                 kind = GrabKind.FirmBasket;
-                score = Mathf.Lerp(0.76f, 0.98f, horizontalAlign * 0.7f + verticalProximity * 0.3f);
+                score = Mathf.Lerp(0.85f, 0.98f, 1f - (horizDist / 0.32f));
             }
-            else if (prongsTouching >= 2 || (prongsTouching == 1 && horizDist <= 0.38f))
+            else if (horizDist <= 0.44f)
             {
                 kind = GrabKind.SidePinch;
-                score = Mathf.Lerp(0.48f, 0.72f, horizontalAlign * 0.6f + verticalProximity * 0.4f);
+                score = Mathf.Lerp(0.58f, 0.78f, 1f - ((horizDist - 0.32f) / 0.12f));
             }
-            else if (prongsTouching == 1 || horizDist <= 0.46f)
+            else if (horizDist <= 0.54f)
             {
                 kind = GrabKind.LimbTip;
-                score = Mathf.Lerp(0.25f, 0.42f, horizontalAlign * 0.5f + verticalProximity * 0.5f);
-            }
-            else if (horizDist < 0.52f)
-            {
-                kind = GrabKind.ShoveOnly;
-                score = 0.12f;
+                score = Mathf.Lerp(0.32f, 0.48f, 1f - ((horizDist - 0.44f) / 0.10f));
             }
 
             if (score > best.score)
@@ -602,42 +548,40 @@ public class ClawController : MonoBehaviour
                 best.prize = prize;
                 best.kind = kind;
                 best.score = score;
-                best.horizontalAlign = horizontalAlign;
-                best.verticalProximity = verticalProximity;
-                best.prongCount = prongsTouching;
-                best.contactPoint = avgContact;
-                best.stability = kind == GrabKind.FirmBasket ? 1f : (kind == GrabKind.SidePinch ? 0.65f : 0.30f);
-                best.isValid = kind != GrabKind.None && kind != GrabKind.ShoveOnly;
+                best.horizontalAlign = 1f - Mathf.Clamp01(horizDist / 0.54f);
+                best.verticalProximity = 1f - Mathf.Clamp01(vertDist / 0.85f);
+                best.prongCount = 3;
+                best.contactPoint = prizeCoM;
+                best.stability = kind == GrabKind.FirmBasket ? 1f : (kind == GrabKind.SidePinch ? 0.75f : 0.40f);
+                best.isValid = kind != GrabKind.None;
             }
         }
 
         return best;
     }
 
+    private void SetClawPrizeCollisionIgnored(Prize prize, bool ignore)
+    {
+        if (prize == null) return;
+        Collider prizeCol = prize.GetComponentInChildren<Collider>();
+        if (prizeCol == null) return;
+
+        Collider[] clawColliders = clawVisualContainer != null 
+            ? clawVisualContainer.GetComponentsInChildren<Collider>() 
+            : GetComponentsInChildren<Collider>();
+
+        foreach (var c in clawColliders)
+        {
+            if (c != null && c.enabled && prizeCol != null && prizeCol.enabled)
+            {
+                Physics.IgnoreCollision(c, prizeCol, ignore);
+            }
+        }
+    }
+
     private void TryGrabRealistic()
     {
         CaptureEvaluation eval = EvaluateBestCandidate();
-
-        // Se encostou de raspão (ShoveOnly): empurra a pelúcia no monte e faz o monte se mexer!
-        if (eval.kind == GrabKind.ShoveOnly && eval.prize != null && eval.prize.Body != null)
-        {
-            Vector3 shoveDir = (eval.prize.transform.position - transform.position).normalized + Vector3.down * 0.4f;
-            eval.prize.Body.AddForce(shoveDir * 2.8f, ForceMode.Impulse);
-            eval.prize.Body.AddTorque(Random.insideUnitSphere * 3.5f, ForceMode.Impulse);
-
-            if (clawAnimationRoutine != null) StopCoroutine(clawAnimationRoutine);
-            clawAnimationRoutine = StartCoroutine(AnimateClaw(0.22f, 0.15f));
-
-            AudioFeedbackController.Instance?.PlayClank();
-            AudioFeedbackController.Instance?.PlayNearMiss();
-            GameJuice.Instance?.HapticsLight();
-
-            currentHeldPrize = null;
-            premioAgarrado = null;
-            OnGrabAttempt?.Invoke(false);
-            Debug.Log("[Claw] Dentes rasparam no prêmio (ShoveOnly) — monte empurrado.");
-            return;
-        }
 
         if (!eval.isValid || eval.prize == null)
         {
@@ -650,11 +594,14 @@ public class ClawController : MonoBehaviour
             return;
         }
 
+        // Ignora colisão física entre os dentes da garra e o prêmio agarrado para evitar qualquer repulsão violenta
+        SetClawPrizeCollisionIgnored(eval.prize, true);
+
         // Parâmetros de Captura
         captureQuality = eval.score;
         currentSolenoidVoltage = solenoidMaxVoltage;
-        prizeMass = eval.prize.Body != null ? eval.prize.Body.mass : 1.5f;
-        frictionCoeff = 0.90f;
+        prizeMass = eval.prize.Body != null ? eval.prize.Body.mass : 1.2f;
+        frictionCoeff = 0.95f;
 
         if (PlayerEconomyManager.Instance != null && PlayerEconomyManager.Instance.IsGoldenClawActive)
         {
@@ -666,8 +613,8 @@ public class ClawController : MonoBehaviour
             Debug.Log("[ClawController] 🌟 FICHA DOURADA ATIVA! FirmBasket forçado!");
         }
 
-        baseGripForce = 1.30f;
-        currentGripForce = baseGripForce * clawForce * Mathf.Lerp(0.88f, 1.25f, eval.score);
+        baseGripForce = 1.35f;
+        currentGripForce = baseGripForce * clawForce * Mathf.Lerp(0.90f, 1.30f, eval.score);
         currentHeldPrize = eval.prize;
         premioAgarrado = eval.prize.gameObject;
 
@@ -684,8 +631,8 @@ public class ClawController : MonoBehaviour
         isSlipping = false;
         slipTimer = 0f;
 
-        // Animação proporcional da garra: cesto fecha mais (0.08), pinch fecha na ponta (0.18)
-        float targetClamp = (eval.kind == GrabKind.FirmBasket) ? 0.08f : 0.18f;
+        // Animação da garra envolvendo o prêmio
+        float targetClamp = (eval.kind == GrabKind.FirmBasket) ? 0.06f : 0.16f;
         if (clawAnimationRoutine != null) StopCoroutine(clawAnimationRoutine);
         clawAnimationRoutine = StartCoroutine(AnimateClaw(targetClamp, 0.20f));
 
@@ -695,13 +642,13 @@ public class ClawController : MonoBehaviour
         if (eval.kind == GrabKind.FirmBasket)
         {
             GameJuice.Instance?.HapticsMedium();
-            GameJuice.Instance?.PunchScale(currentHeldPrize.transform, 1.10f, 0.20f);
+            GameJuice.Instance?.PunchScale(currentHeldPrize.transform, 1.08f, 0.20f);
             GameJuice.Instance?.PlaySparkles(transform.position);
         }
         else if (eval.kind == GrabKind.SidePinch)
         {
             GameJuice.Instance?.HapticsMedium();
-            GameJuice.Instance?.ScreenShake(0.09f, 0.10f);
+            GameJuice.Instance?.ScreenShake(0.08f, 0.10f);
         }
         else // LimbTip
         {
@@ -715,7 +662,7 @@ public class ClawController : MonoBehaviour
             cam.PunchFOV(0.5f);
         }
 
-        Debug.Log($"[Claw] Captura iniciada! Tipo: {eval.kind} | Qualidade: {eval.score:P0} | Prongs: {eval.prongCount} | {currentHeldPrize.prizeId}");
+        Debug.Log($"[Claw] Captura bem-sucedida! Tipo: {eval.kind} | Qualidade: {eval.score:P0} | {currentHeldPrize.prizeId}");
     }
 
     private void UpdateHeldPrizePhysics()
