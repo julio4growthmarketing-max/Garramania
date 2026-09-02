@@ -41,10 +41,10 @@ public class ClawController : MonoBehaviour
     }
 
     [Header("Captura Realista")]
-    [SerializeField] private float captureRadius = 0.78f;
-    [SerializeField] private float maxHorizontalAlignDistance = 0.65f;
+    [SerializeField] private float captureRadius = 0.86f;
+    [SerializeField] private float maxHorizontalAlignDistance = 0.72f;
     [SerializeField] private float idealVerticalOffset = -0.22f;
-    [SerializeField] private float verticalTolerance = 0.55f;
+    [SerializeField] private float verticalTolerance = 0.60f;
     [SerializeField] private LayerMask prizeLayer;
 
     [Header("Eletromecânica do Solenoide & Modulação PWM (Engenharia Real)")]
@@ -56,9 +56,9 @@ public class ClawController : MonoBehaviour
     private float frictionCoeff = 0.85f;
 
     [Header("Grip")]
-    [SerializeField, Range(0.3f, 2.0f)] private float baseGripForce = 1.05f;
-    [SerializeField] private float gripLossPerSecondWhileMoving = 0.035f;
-    [SerializeField] private float gripLossPerSwayDegree = 0.003f;
+    [SerializeField, Range(0.3f, 2.0f)] private float baseGripForce = 1.15f;
+    [SerializeField] private float gripLossPerSecondWhileMoving = 0.028f;
+    [SerializeField] private float gripLossPerSwayDegree = 0.0024f;
 
     private float currentGripForce;
     private Prize currentHeldPrize;
@@ -98,10 +98,18 @@ public class ClawController : MonoBehaviour
     private Vector2 currentSwayAngle;
     private Vector2 swayVelocity;
 
+    // === ANTI-ESPIRRO: Tracking de colisões ignoradas durante o ciclo de captura ===
+    private readonly List<Collider> ignoredPrizeColliders = new List<Collider>();
+    private bool prongsInTriggerMode = false;
+
     void Start()
     {
         transform.position = new Vector3(0f, LIM_YMAX, 0f);
         stockManager = PrizeStockManager.Instance;
+
+        // === FASE 3: Physics Settings Globais para depenetração suave ===
+        Physics.defaultContactOffset = 0.03f; // Margem maior = resolve contato mais cedo e suavemente
+        Physics.defaultSolverIterations = 4;   // Menos iterações = menos força de depenetração explosiva
 
         try
         {
@@ -273,7 +281,8 @@ public class ClawController : MonoBehaviour
         OnClawStateChanged?.Invoke(true);
 
         // 1. FASE DE DESCIDA E IMPACTO NO MONTE (Garra desce ABERTA empurrando o monte com colliders reais)
-        float floorLimitY = -0.70f;
+        // A garra precisa mergulhar NA pilha para as pinças envolverem os bonecos
+        float floorLimitY = -0.82f;
         float targetY = floorLimitY;
 
         int pLayer = LayerMask.NameToLayer("Prize");
@@ -281,7 +290,8 @@ public class ClawController : MonoBehaviour
         RaycastHit hit;
         if (Physics.SphereCast(transform.position, 0.24f, Vector3.down, out hit, 3.5f, mask))
         {
-            targetY = Mathf.Max(hit.point.y - 0.22f, floorLimitY);
+            // Mergulha 0.35 abaixo do topo da pilha para as pinças envolverem os bonecos
+            targetY = Mathf.Max(hit.point.y - 0.35f, floorLimitY);
         }
 
         while (transform.position.y > targetY + 0.02f)
@@ -400,11 +410,11 @@ public class ClawController : MonoBehaviour
             Debug.Log("[Claw] Tranco inicial de subida em ponta de membro (LimbTip)!");
             if (currentHeldPrize.Body != null)
             {
-                currentHeldPrize.Body.AddForce(Vector3.down * 2.5f + Random.insideUnitSphere * 1.0f, ForceMode.Impulse);
-                currentHeldPrize.Body.AddTorque(Random.insideUnitSphere * 2.8f, ForceMode.Impulse);
+                currentHeldPrize.Body.AddForce(Vector3.down * 1.8f + Random.insideUnitSphere * 0.7f, ForceMode.Impulse);
+                currentHeldPrize.Body.AddTorque(Random.insideUnitSphere * 2.0f, ForceMode.Impulse);
             }
-            // 40% de chance de soltar no início da subida para dar suspense
-            if (Random.value < 0.40f)
+            // 30% de chance de soltar no início da subida para dar suspense
+            if (Random.value < 0.30f)
             {
                 ReleasePrizeWithPhysics();
             }
@@ -420,10 +430,10 @@ public class ClawController : MonoBehaviour
             Debug.Log("[Claw] Tranco de meio de subida (SidePinch)!");
             if (currentHeldPrize.Body != null)
             {
-                currentHeldPrize.Body.AddForce(Vector3.down * 1.8f + Random.insideUnitSphere * 0.8f, ForceMode.Impulse);
-                currentHeldPrize.Body.AddTorque(Random.insideUnitSphere * 2.2f, ForceMode.Impulse);
+                currentHeldPrize.Body.AddForce(Vector3.down * 1.3f + Random.insideUnitSphere * 0.6f, ForceMode.Impulse);
+                currentHeldPrize.Body.AddTorque(Random.insideUnitSphere * 1.6f, ForceMode.Impulse);
             }
-            if (Random.value < 0.20f)
+            if (Random.value < 0.10f)
             {
                 currentHeldPrize.BeginSlip();
             }
@@ -436,12 +446,16 @@ public class ClawController : MonoBehaviour
 
         if (currentHeldPrize.CurrentGrabKind == GrabKind.LimbTip)
         {
-            Debug.Log("[Claw] LimbTip não resistiu ao tranco do topo!");
-            ReleasePrizeWithPhysics();
+            // 70% de chance de soltar no topo (antes era 100%)
+            if (Random.value < 0.70f)
+            {
+                Debug.Log("[Claw] LimbTip não resistiu ao tranco do topo!");
+                ReleasePrizeWithPhysics();
+            }
         }
         else if (currentHeldPrize.CurrentGrabKind == GrabKind.SidePinch)
         {
-            if (captureQuality < 0.45f || Random.value < 0.30f)
+            if (captureQuality < 0.35f || Random.value < 0.20f)
             {
                 Debug.Log($"[Claw] SidePinch ({captureQuality:P0}) desarmado pelo tranco do topo!");
                 ReleasePrizeWithPhysics();
@@ -449,7 +463,7 @@ public class ClawController : MonoBehaviour
         }
         else if (currentHeldPrize.CurrentGrabKind == GrabKind.FirmBasket)
         {
-            if (captureQuality < 0.20f)
+            if (captureQuality < 0.12f)
             {
                 ReleasePrizeWithPhysics();
             }
@@ -460,6 +474,15 @@ public class ClawController : MonoBehaviour
     {
         isClosed = true;
         AudioFeedbackController.Instance?.PlaySolenoidClamp();
+
+        // === FASE 1 + 2: ANTI-ESPIRRO ===
+        // ANTES de fechar, converter colliders das pinças para trigger (fantasma)
+        // e ignorar colisões com TODOS os prêmios próximos.
+        // Isso impede que as pinças empurrem os bonecos durante o fechamento.
+        SetProngCollidersTrigger(true);
+        IgnoreAllNearbyPrizeCollisions(true);
+        Debug.Log("[ClawCapture] Fase de fechamento: pinças em modo fantasma + colisões ignoradas.");
+
         if (clawAnimationRoutine != null) StopCoroutine(clawAnimationRoutine);
         clawAnimationRoutine = StartCoroutine(AnimateClaw(0.0f, 0.35f));
 
@@ -470,6 +493,17 @@ public class ClawController : MonoBehaviour
     {
         yield return new WaitForSeconds(delay);
         TryGrabRealistic();
+
+        // === ANTI-ESPIRRO: Restaurar colliders das pinças para sólidos ===
+        // Neste ponto, se houve captura, o boneco já é kinematic e parentado,
+        // então restaurar os colliders é seguro (não vai empurrar nada).
+        SetProngCollidersTrigger(false);
+        Debug.Log($"[ClawCapture] Fase pós-grab: pinças restauradas para sólido. Captura={currentHeldPrize != null}");
+
+        // NÃO restauramos IgnoreCollision aqui — mantemos ignorando o prêmio capturado
+        // durante toda a subida para evitar micro-colisões. Será restaurado ao soltar.
+        // MAS restauramos colisões com prêmios que NÃO foram capturados.
+        RestoreNonCapturedPrizeCollisions();
     }
 
     private System.Collections.IEnumerator AnimateClaw(float targetOpen, float duration)
@@ -498,9 +532,34 @@ public class ClawController : MonoBehaviour
         CaptureEvaluation best = new CaptureEvaluation { isValid = false, score = -1f, kind = GrabKind.None };
 
         Vector3 clawPos = transform.position;
-        Vector3 prongTipsPos = carrySocket != null ? carrySocket.position : (clawVisualContainer != null ? clawVisualContainer.position + Vector3.down * 0.35f : clawPos + Vector3.down * 0.35f);
 
-        Collider[] hits = Physics.OverlapSphere(prongTipsPos, 0.75f, prizeLayer);
+        // === CORREÇÃO DE GEOMETRIA ===
+        // O carrySocket está em localPos (0, -2.42, 0) no VC (scale 0.58) = 1.40 abaixo da garra.
+        // Mas as pontas REAIS das pinças convergem em ~(0, -1.20, 0) no VC = 0.70 abaixo da garra.
+        // Usar o carrySocket colocava o centro de detecção 0.70 unidades ABAIXO das pontas reais,
+        // fazendo a esfera de busca ficar inteiramente abaixo dos bonecos.
+        //
+        // A posição correta das pontas no mundo:
+        //   VC local Y = -1.20 (hub -0.22 + blade tip -0.98)
+        //   World offset = -1.20 * 0.58 (scale) = -0.696 abaixo do transform
+        Vector3 prongTipsPos;
+        if (clawVisualContainer != null)
+        {
+            prongTipsPos = clawVisualContainer.TransformPoint(new Vector3(0f, -1.20f, 0f));
+        }
+        else
+        {
+            prongTipsPos = clawPos + Vector3.down * 0.70f;
+        }
+
+        // Esfera de detecção generosa para encontrar todos os prêmios ao redor das pontas
+        // Detecção de prêmios com fallback robusto de layer
+        int pLayer = LayerMask.NameToLayer("Prize");
+        int detectMask = prizeLayer.value;
+        if (detectMask == 0) detectMask = pLayer != -1 ? (1 << pLayer) : ~0; // fallback: layer Prize ou tudo
+
+        Collider[] hits = Physics.OverlapSphere(prongTipsPos, 0.60f, detectMask);
+        Debug.Log($"[ClawCapture] Detecção: clawY={clawPos.y:F3}, tipsY={prongTipsPos.y:F3}, mask={detectMask}, hits={hits.Length}");
         HashSet<Prize> evaluated = new HashSet<Prize>();
 
         foreach (var col in hits)
@@ -517,7 +576,10 @@ public class ClawController : MonoBehaviour
             );
             float vertDist = Mathf.Abs(prongTipsPos.y - prizeCoM.y);
 
-            if (horizDist > 0.58f || vertDist > 0.85f) continue;
+            // Cutoff externo: descarta candidatos claramente fora do alcance
+            if (horizDist > 0.50f || vertDist > 0.75f) continue;
+
+            Debug.Log($"[ClawCapture] Candidato: {prize.prizeId} | hDist={horizDist:F3} vDist={vertDist:F3}");
 
             GrabKind kind = GrabKind.None;
             float score = 0f;
@@ -527,20 +589,24 @@ public class ClawController : MonoBehaviour
                 kind = GrabKind.FirmBasket;
                 score = 1.0f;
             }
-            else if (horizDist <= 0.32f)
+            // === GRAB KINDS: horizDist E vertDist obrigatórios para cada tipo ===
+            // FirmBasket: boneco centralizado entre as pinças
+            else if (horizDist <= 0.28f && vertDist <= 0.65f)
             {
                 kind = GrabKind.FirmBasket;
-                score = Mathf.Lerp(0.85f, 0.98f, 1f - (horizDist / 0.32f));
+                score = Mathf.Lerp(0.87f, 0.98f, 1f - (horizDist / 0.28f));
             }
-            else if (horizDist <= 0.44f)
+            // SidePinch: boneco pego de lado, pinças apertam as laterais
+            else if (horizDist <= 0.40f && vertDist <= 0.70f)
             {
                 kind = GrabKind.SidePinch;
-                score = Mathf.Lerp(0.58f, 0.78f, 1f - ((horizDist - 0.32f) / 0.12f));
+                score = Mathf.Lerp(0.55f, 0.75f, 1f - ((horizDist - 0.28f) / 0.12f));
             }
-            else if (horizDist <= 0.54f)
+            // LimbTip: ponta da pinça pega uma extremidade (braço, perna)
+            else if (horizDist <= 0.48f && vertDist <= 0.70f)
             {
                 kind = GrabKind.LimbTip;
-                score = Mathf.Lerp(0.32f, 0.48f, 1f - ((horizDist - 0.44f) / 0.10f));
+                score = Mathf.Lerp(0.30f, 0.45f, 1f - ((horizDist - 0.40f) / 0.08f));
             }
 
             if (score > best.score)
@@ -548,12 +614,13 @@ public class ClawController : MonoBehaviour
                 best.prize = prize;
                 best.kind = kind;
                 best.score = score;
-                best.horizontalAlign = 1f - Mathf.Clamp01(horizDist / 0.54f);
-                best.verticalProximity = 1f - Mathf.Clamp01(vertDist / 0.85f);
+                best.horizontalAlign = 1f - Mathf.Clamp01(horizDist / 0.40f);
+                best.verticalProximity = 1f - Mathf.Clamp01(vertDist / 0.65f);
                 best.prongCount = 3;
                 best.contactPoint = prizeCoM;
                 best.stability = kind == GrabKind.FirmBasket ? 1f : (kind == GrabKind.SidePinch ? 0.75f : 0.40f);
                 best.isValid = kind != GrabKind.None;
+                Debug.Log($"[ClawCapture] Melhor até agora: {prize.prizeId} | kind={kind} score={score:F3}");
             }
         }
 
@@ -579,12 +646,91 @@ public class ClawController : MonoBehaviour
         }
     }
 
+    // === ANTI-ESPIRRO: Converte TODOS os colliders das pinças entre sólido e trigger ===
+    private void SetProngCollidersTrigger(bool isTrigger)
+    {
+        if (prongsInTriggerMode == isTrigger) return;
+        prongsInTriggerMode = isTrigger;
+
+        Collider[] clawColliders = clawVisualContainer != null
+            ? clawVisualContainer.GetComponentsInChildren<Collider>()
+            : GetComponentsInChildren<Collider>();
+
+        foreach (var c in clawColliders)
+        {
+            if (c != null && c.enabled)
+            {
+                c.isTrigger = isTrigger;
+            }
+        }
+    }
+
+    // === ANTI-ESPIRRO: Ignora colisões entre TODAS as pinças e TODOS os prêmios próximos ===
+    private void IgnoreAllNearbyPrizeCollisions(bool ignore)
+    {
+        Vector3 center = carrySocket != null ? carrySocket.position
+            : (clawVisualContainer != null ? clawVisualContainer.position + Vector3.down * 0.35f
+            : transform.position + Vector3.down * 0.35f);
+
+        int pLayer = LayerMask.NameToLayer("Prize");
+        int mask = prizeLayer.value != 0 ? prizeLayer.value : (pLayer != -1 ? (1 << pLayer) : ~0);
+        Collider[] nearby = Physics.OverlapSphere(center, 1.2f, mask);
+
+        Collider[] clawColliders = clawVisualContainer != null
+            ? clawVisualContainer.GetComponentsInChildren<Collider>()
+            : GetComponentsInChildren<Collider>();
+
+        if (ignore) ignoredPrizeColliders.Clear();
+
+        foreach (var prizeCol in nearby)
+        {
+            if (prizeCol == null || !prizeCol.enabled) continue;
+
+            foreach (var clawCol in clawColliders)
+            {
+                if (clawCol == null || !clawCol.enabled) continue;
+                Physics.IgnoreCollision(clawCol, prizeCol, ignore);
+            }
+
+            if (ignore && !ignoredPrizeColliders.Contains(prizeCol))
+            {
+                ignoredPrizeColliders.Add(prizeCol);
+            }
+        }
+
+        if (!ignore) ignoredPrizeColliders.Clear();
+    }
+
+    // === ANTI-ESPIRRO: Restaura colisões apenas dos prêmios que NÃO foram capturados ===
+    private void RestoreNonCapturedPrizeCollisions()
+    {
+        Collider capturedCol = currentHeldPrize != null ? currentHeldPrize.GetComponentInChildren<Collider>() : null;
+
+        Collider[] clawColliders = clawVisualContainer != null
+            ? clawVisualContainer.GetComponentsInChildren<Collider>()
+            : GetComponentsInChildren<Collider>();
+
+        for (int i = ignoredPrizeColliders.Count - 1; i >= 0; i--)
+        {
+            Collider pc = ignoredPrizeColliders[i];
+            if (pc == null || pc == capturedCol) continue;
+
+            foreach (var clawCol in clawColliders)
+            {
+                if (clawCol == null || !clawCol.enabled) continue;
+                Physics.IgnoreCollision(clawCol, pc, false);
+            }
+            ignoredPrizeColliders.RemoveAt(i);
+        }
+    }
+
     private void TryGrabRealistic()
     {
         CaptureEvaluation eval = EvaluateBestCandidate();
 
         if (!eval.isValid || eval.prize == null)
         {
+            Debug.Log($"[ClawCapture] FALHA NA CAPTURA: isValid={eval.isValid}, prize={eval.prize}, score={eval.score:F3}, kind={eval.kind}");
             currentHeldPrize = null;
             premioAgarrado = null;
             OnGrabAttempt?.Invoke(false);
@@ -613,8 +759,8 @@ public class ClawController : MonoBehaviour
             Debug.Log("[ClawController] 🌟 FICHA DOURADA ATIVA! FirmBasket forçado!");
         }
 
-        baseGripForce = 1.35f;
-        currentGripForce = baseGripForce * clawForce * Mathf.Lerp(0.90f, 1.30f, eval.score);
+        baseGripForce = 1.50f;
+        currentGripForce = baseGripForce * clawForce * Mathf.Lerp(0.95f, 1.40f, eval.score);
         currentHeldPrize = eval.prize;
         premioAgarrado = eval.prize.gameObject;
 
@@ -680,19 +826,19 @@ public class ClawController : MonoBehaviour
         switch (kind)
         {
             case GrabKind.FirmBasket:
-                maxSlipDuration = 0.70f;
-                currentGripLossPerSec = 0.035f;
-                currentGripLossPerSway = 0.003f;
+                maxSlipDuration = 0.90f;
+                currentGripLossPerSec = 0.025f;
+                currentGripLossPerSway = 0.002f;
                 break;
             case GrabKind.SidePinch:
-                maxSlipDuration = 0.35f;
-                currentGripLossPerSec = 0.060f;
-                currentGripLossPerSway = 0.006f; // x2
+                maxSlipDuration = 0.50f;
+                currentGripLossPerSec = 0.045f;
+                currentGripLossPerSway = 0.004f;
                 break;
             case GrabKind.LimbTip:
-                maxSlipDuration = 0.18f;
-                currentGripLossPerSec = 0.100f;
-                currentGripLossPerSway = 0.009f; // x3
+                maxSlipDuration = 0.28f;
+                currentGripLossPerSec = 0.075f;
+                currentGripLossPerSway = 0.006f;
                 break;
         }
 
@@ -752,6 +898,9 @@ public class ClawController : MonoBehaviour
     private void ReleasePrizeWithPhysics()
     {
         if (currentHeldPrize == null) return;
+
+        // === ANTI-ESPIRRO: Restaurar colisões do prêmio que está sendo solto ===
+        SetClawPrizeCollisionIgnored(currentHeldPrize, false);
 
         Prize p = currentHeldPrize;
         currentHeldPrize = null;
@@ -858,6 +1007,11 @@ public class ClawController : MonoBehaviour
         if (clawAnimationRoutine != null) StopCoroutine(clawAnimationRoutine);
         clawAnimationRoutine = StartCoroutine(AnimateClaw(1.0f, 0.35f));
 
+        // === ANTI-ESPIRRO: Restaurar TODAS as colisões pendentes ===
+        SetClawPrizeCollisionIgnored(currentHeldPrize, false);
+        IgnoreAllNearbyPrizeCollisions(false);
+        SetProngCollidersTrigger(false);
+
         // Só entrega se o prêmio REALMENTE chegou preso na garra
         Prize p = currentHeldPrize;
         currentHeldPrize = null;
@@ -923,9 +1077,14 @@ public class ClawController : MonoBehaviour
         currentOpenFactor = 1.0f;
         clawRig.SetOpenAmount?.Invoke(1.0f);
         OnClawStateChanged?.Invoke(false);
+
+        // === ANTI-ESPIRRO: Restaurar estado completo ===
+        SetProngCollidersTrigger(false);
+        IgnoreAllNearbyPrizeCollisions(false);
         
         if (currentHeldPrize != null)
         {
+            SetClawPrizeCollisionIgnored(currentHeldPrize, false);
             currentHeldPrize.Detach();
             currentHeldPrize = null;
         }

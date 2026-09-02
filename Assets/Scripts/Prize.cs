@@ -72,10 +72,10 @@ public class Prize : MonoBehaviour
     public void ApplyDefaultPhysics()
     {
         if (Body == null) return;
-        Body.linearDamping = 1.25f; // Arrasto de pano no ar (evita queda como pedra/lua)
-        Body.angularDamping = 0.65f; // Permite 1-2 tombos visíveis sem girar para sempre
+        Body.linearDamping = 1.80f; // Arrasto de pano no ar — aumentado para amortecer depenetrações espúrias
+        Body.angularDamping = 0.85f; // Absorve rotação residual de contato com pinças
         Body.mass = massFeel;
-        Body.maxAngularVelocity = 8.0f; // Tumble suave, não liquidificador
+        Body.maxAngularVelocity = 6.0f; // Tumble suave, não liquidificador
         Body.centerOfMass = new Vector3(0f, -0.06f, 0f); // Peso concentrado na base (tomba naturalmente)
         Body.interpolation = RigidbodyInterpolation.Interpolate;
         Body.collisionDetectionMode = CollisionDetectionMode.Continuous;
@@ -203,6 +203,16 @@ public class Prize : MonoBehaviour
 
     void OnCollisionEnter(Collision collision)
     {
+        // === ANTI-ESPIRRO: Velocity clamping de emergência contra depenetração explosiva ===
+        // Se uma colisão com QUALQUER objeto resultar em velocidade absurda, clampa imediatamente.
+        // Isso é a última linha de defesa — bonecos de pelúcia não podem sair voando.
+        if (Body != null && State == PrizeState.InPile && Body.linearVelocity.sqrMagnitude > 2.25f) // > 1.5 m/s
+        {
+            Body.linearVelocity = Body.linearVelocity.normalized * 1.0f;
+            Body.angularVelocity *= 0.3f;
+            Debug.Log($"[Prize] ANTI-ESPIRRO: Velocidade clamped de {Body.linearVelocity.magnitude:F2} m/s para evitar lançamento.");
+        }
+
         // 1. Se estiver caindo (Dropped), toca o som de Thud e acorda vizinhos NO IMPACTO com o piso/monte
         if (State == PrizeState.Dropped && !hasLandedDropImpact)
         {
@@ -336,14 +346,14 @@ public class Prize : MonoBehaviour
 
     public bool IsGripSufficient(float currentGrip, float swayPenalty, float movementPenalty)
     {
-        float effectiveRequired = gripRequired * (1f + slipperiness * 0.35f);
-        effectiveRequired *= Mathf.Lerp(1.20f, 0.85f, CaptureQuality);
+        float effectiveRequired = gripRequired * (1f + slipperiness * 0.25f);
+        effectiveRequired *= Mathf.Lerp(1.10f, 0.80f, CaptureQuality);
 
         float kindMultiplier = 1.0f;
-        if (CurrentGrabKind == GrabKind.SidePinch) kindMultiplier = 2.0f;
-        else if (CurrentGrabKind == GrabKind.LimbTip) kindMultiplier = 3.2f;
+        if (CurrentGrabKind == GrabKind.SidePinch) kindMultiplier = 1.6f;
+        else if (CurrentGrabKind == GrabKind.LimbTip) kindMultiplier = 2.5f;
 
-        effectiveRequired += (swayPenalty * 0.15f * kindMultiplier) + (movementPenalty * 0.10f * kindMultiplier);
+        effectiveRequired += (swayPenalty * 0.12f * kindMultiplier) + (movementPenalty * 0.08f * kindMultiplier);
 
         return currentGrip >= effectiveRequired;
     }

@@ -83,11 +83,12 @@ public static class RealisticClawMeshBuilder
         CreateCylinder("LowerHub_Disc", lowerHub.transform, Vector3.zero, new Vector3(0.32f, 0.06f, 0.32f), mTitanium);
         CreateCylinder("LowerHub_Nut", lowerHub.transform, new Vector3(0f, -0.035f, 0f), new Vector3(0.14f, 0.03f, 0.14f), mBrass);
 
-        // Socket do Prêmio: ajustado para que as 3 pinças curvem e belisquem a cabeça/ombros do boneco,
-        // deixando o corpo e as perninhas penduradas livres para baixo (física autêntica de garra)
+        // Socket do Prêmio: posicionado na convergência real das pontas das 3 pinças quando fechadas.
+        // Hub está em Y=-0.22, blade tip se estende ~-1.0 para baixo → convergência em ~Y=-1.25.
+        // O prêmio fica "encestado" entre os dentes, não pendurado longe abaixo.
         GameObject carrySocketObj = new GameObject("CarrySocket_Premio");
         carrySocketObj.transform.SetParent(visualContainer, false);
-        carrySocketObj.transform.localPosition = new Vector3(0f, -2.42f, 0f);
+        carrySocketObj.transform.localPosition = new Vector3(0f, -1.30f, 0f);
         carrySocketObj.transform.localRotation = Quaternion.Euler(0f, 180f, 0f);
 
         // ==================== 4. AS 3 PINÇAS CURVADAS E BIELAS ====================
