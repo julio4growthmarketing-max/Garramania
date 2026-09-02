@@ -107,9 +107,11 @@ public class ClawController : MonoBehaviour
         transform.position = new Vector3(0f, LIM_YMAX, 0f);
         stockManager = PrizeStockManager.Instance;
 
-        // === FASE 3: Physics Settings Globais para depenetração suave ===
-        Physics.defaultContactOffset = 0.03f; // Margem maior = resolve contato mais cedo e suavemente
-        Physics.defaultSolverIterations = 4;   // Menos iterações = menos força de depenetração explosiva
+        // === WEBGL MOBILE FIX: Physics settings otimizados para FPS baixo ===
+        Physics.defaultContactOffset = 0.03f;
+        Physics.defaultSolverIterations = 6;   // Manter solver robusto (4 era fraco demais para mobile)
+        Time.maximumDeltaTime = 0.10f;         // Impede acúmulo excessivo de physics steps em frames longos
+        Application.targetFrameRate = 60;       // Solicita 60fps ao browser (WebGL respeita quando possível)
 
         try
         {
@@ -294,17 +296,28 @@ public class ClawController : MonoBehaviour
             targetY = Mathf.Max(hit.point.y - 0.35f, floorLimitY);
         }
 
+        // === WEBGL MOBILE FIX: Descida com deltaTime capped + freio gradual ===
+        // Em FPS baixo (15-30fps), deltaTime grande faz a garra pular pelo boneco.
+        // Cap em 0.033s (equiv. 30fps) garante movimento suave mesmo em FPS baixo.
         while (transform.position.y > targetY + 0.02f)
         {
+            float cappedDt = Mathf.Min(Time.deltaTime, 0.033f);
+            float distToTarget = transform.position.y - targetY;
+            // Freio gradual: nos últimos 0.3 unidades, reduz velocidade pela metade
+            float speed = distToTarget < 0.30f ? 1.4f : 2.8f;
             transform.position = Vector3.MoveTowards(transform.position, 
                 new Vector3(transform.position.x, targetY, transform.position.z), 
-                2.8f * Time.deltaTime);
+                speed * cappedDt);
 
             AtualizarCabo();
             yield return null;
         }
 
-        yield return new WaitForSeconds(0.18f);
+        // === WEBGL MOBILE FIX: Pausa maior para estabilização de física ===
+        // Em FPS baixo, os rigidbodies dos prêmios precisam de mais tempo para
+        // estabilizar após o impacto da garra descendo na pilha.
+        yield return new WaitForSeconds(0.30f);
+        Physics.SyncTransforms(); // Garante que as posições dos colliders estão sincronizadas
 
         // 2. FASE DE FECHAMENTO (Pulso elétrico solenoide nos dentes)
         FecharGarraFisica();
@@ -552,13 +565,26 @@ public class ClawController : MonoBehaviour
             prongTipsPos = clawPos + Vector3.down * 0.70f;
         }
 
-        // Esfera de detecção generosa para encontrar todos os prêmios ao redor das pontas
+        // === WEBGL MOBILE FIX: SyncTransforms garante posições corretas após descida ===
+        Physics.SyncTransforms();
+
         // Detecção de prêmios com fallback robusto de layer
         int pLayer = LayerMask.NameToLayer("Prize");
         int detectMask = prizeLayer.value;
-        if (detectMask == 0) detectMask = pLayer != -1 ? (1 << pLayer) : ~0; // fallback: layer Prize ou tudo
+        if (detectMask == 0) detectMask = pLayer != -1 ? (1 << pLayer) : ~0;
 
-        Collider[] hits = Physics.OverlapSphere(prongTipsPos, 0.60f, detectMask);
+        // === WEBGL MOBILE FIX: Raio de detecção maior (0.60 → 0.75) ===
+        // Em FPS baixo a garra pode ter "pulado" ligeiramente além da posição ideal.
+        // Raio maior compensa esse erro de posicionamento.
+        Collider[] hits = Physics.OverlapSphere(prongTipsPos, 0.75f, detectMask);
+        
+        // Fallback: se não encontrou nada, tenta com raio ainda maior centrado na garra
+        if (hits.Length == 0)
+        {
+            hits = Physics.OverlapSphere(clawPos + Vector3.down * 0.50f, 0.90f, detectMask);
+            Debug.Log($"[ClawCapture] Fallback: usando raio expandido, hits={hits.Length}");
+        }
+        
         Debug.Log($"[ClawCapture] Detecção: clawY={clawPos.y:F3}, tipsY={prongTipsPos.y:F3}, mask={detectMask}, hits={hits.Length}");
         HashSet<Prize> evaluated = new HashSet<Prize>();
 
@@ -576,8 +602,8 @@ public class ClawController : MonoBehaviour
             );
             float vertDist = Mathf.Abs(prongTipsPos.y - prizeCoM.y);
 
-            // Cutoff externo: descarta candidatos claramente fora do alcance
-            if (horizDist > 0.50f || vertDist > 0.75f) continue;
+            // === WEBGL MOBILE FIX: Cutoffs relaxados (0.50→0.55 horiz, 0.75→0.85 vert) ===
+            if (horizDist > 0.55f || vertDist > 0.85f) continue;
 
             Debug.Log($"[ClawCapture] Candidato: {prize.prizeId} | hDist={horizDist:F3} vDist={vertDist:F3}");
 
@@ -589,24 +615,24 @@ public class ClawController : MonoBehaviour
                 kind = GrabKind.FirmBasket;
                 score = 1.0f;
             }
-            // === GRAB KINDS: horizDist E vertDist obrigatórios para cada tipo ===
+            // === GRAB KINDS: thresholds levemente relaxados para compensar FPS baixo ===
             // FirmBasket: boneco centralizado entre as pinças
-            else if (horizDist <= 0.28f && vertDist <= 0.65f)
+            else if (horizDist <= 0.32f && vertDist <= 0.70f)
             {
                 kind = GrabKind.FirmBasket;
-                score = Mathf.Lerp(0.87f, 0.98f, 1f - (horizDist / 0.28f));
+                score = Mathf.Lerp(0.87f, 0.98f, 1f - (horizDist / 0.32f));
             }
             // SidePinch: boneco pego de lado, pinças apertam as laterais
-            else if (horizDist <= 0.40f && vertDist <= 0.70f)
+            else if (horizDist <= 0.44f && vertDist <= 0.75f)
             {
                 kind = GrabKind.SidePinch;
-                score = Mathf.Lerp(0.55f, 0.75f, 1f - ((horizDist - 0.28f) / 0.12f));
+                score = Mathf.Lerp(0.55f, 0.75f, 1f - ((horizDist - 0.32f) / 0.12f));
             }
             // LimbTip: ponta da pinça pega uma extremidade (braço, perna)
-            else if (horizDist <= 0.48f && vertDist <= 0.70f)
+            else if (horizDist <= 0.52f && vertDist <= 0.80f)
             {
                 kind = GrabKind.LimbTip;
-                score = Mathf.Lerp(0.30f, 0.45f, 1f - ((horizDist - 0.40f) / 0.08f));
+                score = Mathf.Lerp(0.30f, 0.45f, 1f - ((horizDist - 0.44f) / 0.08f));
             }
 
             if (score > best.score)
@@ -614,8 +640,8 @@ public class ClawController : MonoBehaviour
                 best.prize = prize;
                 best.kind = kind;
                 best.score = score;
-                best.horizontalAlign = 1f - Mathf.Clamp01(horizDist / 0.40f);
-                best.verticalProximity = 1f - Mathf.Clamp01(vertDist / 0.65f);
+                best.horizontalAlign = 1f - Mathf.Clamp01(horizDist / 0.44f);
+                best.verticalProximity = 1f - Mathf.Clamp01(vertDist / 0.70f);
                 best.prongCount = 3;
                 best.contactPoint = prizeCoM;
                 best.stability = kind == GrabKind.FirmBasket ? 1f : (kind == GrabKind.SidePinch ? 0.75f : 0.40f);
