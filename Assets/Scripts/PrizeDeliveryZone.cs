@@ -29,6 +29,9 @@ public class PrizeDeliveryZone : MonoBehaviour
         {
             prize.MarkDelivered();
             Debug.Log($"[DeliveryZone] Prêmio capturado com sucesso: {prize.prizeId}");
+            GameJuice.Instance?.PlayConfetti(transform.position + Vector3.up * 0.5f);
+            GameJuice.Instance?.HapticsSuccess();
+            AccessibilityManager.Instance?.TriggerHaptic(80);
             OnPrizeDelivered?.Invoke(prize);
         }
 

@@ -62,27 +62,18 @@ public sealed class ProfessionalUIController : MonoBehaviour
 {
     public static ProfessionalUIController Instance { get; private set; }
 
-    // Paleta de Cores Oficial GarraMania & ClawCrazy
-    public static readonly Color ColorBgDeepNavy   = new Color(0.08f, 0.09f, 0.18f, 0.95f);  // #14172E
-    public static readonly Color ColorCardDark     = new Color(0.11f, 0.13f, 0.25f, 0.96f);  // #1C2140
-    public static readonly Color ColorCardSlot     = new Color(0.15f, 0.18f, 0.32f, 0.90f);  // #262E52
-    public static readonly Color ColorNeonGold     = new Color(1.00f, 0.85f, 0.12f, 1.00f);  // #FFD91F
-    public static readonly Color ColorNeonCyan     = new Color(0.20f, 0.88f, 1.00f, 1.00f);  // #33E0FF
-    public static readonly Color ColorNeonPink     = new Color(1.00f, 0.25f, 0.60f, 1.00f);  // #FF4099
-    public static readonly Color ColorNeonPurple   = new Color(0.60f, 0.25f, 1.00f, 1.00f);  // #9940FF
-    public static readonly Color ColorNeonGreen    = new Color(0.12f, 0.92f, 0.45f, 1.00f);  // #1FEB73
-    public static readonly Color ColorNeonRed      = new Color(1.00f, 0.22f, 0.25f, 1.00f);  // #FF3840
-    public static readonly Color ColorTextOutline  = new Color(0.04f, 0.05f, 0.12f, 0.98f);  // Contorno escuro pesado
+    // Paleta de Cores Oficial GarraMania & Cyber-Arcade (Consolidada em UITheme)
+    public static readonly Color ColorBgDeepNavy   = UITheme.ColorBgDeepNavy;
+    public static readonly Color ColorCardDark     = UITheme.ColorCardDark;
+    public static readonly Color ColorCardSlot     = UITheme.ColorCardSlot;
+    public static readonly Color ColorNeonGold     = UITheme.ColorNeonGold;
+    public static readonly Color ColorNeonCyan     = UITheme.ColorNeonCyan;
+    public static readonly Color ColorNeonPink     = UITheme.ColorNeonPink;
+    public static readonly Color ColorNeonPurple   = UITheme.ColorNeonPurple;
+    public static readonly Color ColorNeonGreen    = UITheme.ColorNeonGreen;
+    public static readonly Color ColorNeonRed      = UITheme.ColorNeonRed;
+    public static readonly Color ColorTextOutline  = UITheme.ColorTextOutline;
 
-    private static Sprite roundedRectSprite;
-    private static Sprite circleSprite;
-    private static Sprite gradientPinkPurpleSprite;
-    private static Sprite yellowDropSprite;
-    private static Sprite greenBuySprite;
-    private static Sprite whiteGhostSprite;
-
-    private static readonly Dictionary<string, Sprite> portraitCache = new Dictionary<string, Sprite>();
-    private static readonly Dictionary<string, Sprite> uiSpriteCache = new Dictionary<string, Sprite>();
 
     private GameObject canvasRoot;
     private GameObject menuPanel;
@@ -508,9 +499,7 @@ public sealed class ProfessionalUIController : MonoBehaviour
 
     private void BuildInterface()
     {
-        uiFont = Resources.Load<Font>("Fonts/LilitaOne-Regular")
-              ?? Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf") 
-              ?? Resources.GetBuiltinResource<Font>("Arial.ttf");
+        uiFont = UITheme.GetArcadeFont();
 
         canvasRoot = new GameObject("GarraManiaUI_MobileSystem");
         Canvas canvas = canvasRoot.AddComponent<Canvas>();
@@ -1078,29 +1067,6 @@ public sealed class ProfessionalUIController : MonoBehaviour
         foreach (string id in ids) GetPlushiePortrait(id);
     }
 
-    public static Sprite GetPlushiePortrait(string id)
-    {
-        if (string.IsNullOrEmpty(id)) id = "fox";
-        string key = id.ToLowerInvariant();
-        if (key.Contains("fox")) key = "fox";
-        else if (key.Contains("green") || key.Contains("bear")) key = "greenbear";
-        else if (key.Contains("fish") || key.Contains("balloon")) key = "balloonfish";
-        else if (key.Contains("koala")) key = "koala";
-        else if (key.Contains("badger")) key = "badger";
-        else if (key.Contains("pork") || key.Contains("pig")) key = "porky";
-        else key = "fox";
-
-        if (portraitCache.TryGetValue(key, out Sprite cached) && cached != null) return cached;
-
-        Texture2D tex = Resources.Load<Texture2D>($"Textures/Portraits/portrait_{key}");
-        if (tex != null)
-        {
-            Sprite sp = Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), new Vector2(0.5f, 0.5f));
-            portraitCache[key] = sp;
-            return sp;
-        }
-        return null;
-    }
 
     private void PopIn(GameObject panel)
     {
@@ -1154,64 +1120,13 @@ public sealed class ProfessionalUIController : MonoBehaviour
         onComplete?.Invoke();
     }
 
-    public static Sprite GetUISprite(string name, Vector4 border = default)
-    {
-        if (uiSpriteCache.TryGetValue(name, out Sprite cached) && cached != null) return cached;
-        Sprite sp = Resources.Load<Sprite>($"KitUI/{name}");
-        if (sp == null) sp = Resources.Load<Sprite>($"UI/{name}");
-        if (sp != null)
-        {
-            uiSpriteCache[name] = sp;
-            return sp;
-        }
-        return GetRoundedRectSprite();
-    }
 
     private GameObject CreateArcadeButton(Transform parent, string name, Vector2 anchorMin, Vector2 anchorMax, Button3DTheme theme, Action onClick, string label = null, int fontSize = 16, string iconName = null)
     {
-        Color bgColor;
-        Color labelColor;
-        Color bevelColor;
-
-        switch (theme)
-        {
-            case Button3DTheme.Emerald:
-                bgColor = ColorNeonGreen * 0.88f;
-                labelColor = Color.white;
-                bevelColor = new Color(1f, 1f, 1f, 0.30f);
-                break;
-            case Button3DTheme.Gold:
-                bgColor = ColorNeonGold;
-                labelColor = new Color(0.08f, 0.08f, 0.12f, 1f);
-                bevelColor = new Color(1f, 1f, 1f, 0.45f);
-                break;
-            case Button3DTheme.SanwaRed:
-                bgColor = ColorNeonRed;
-                labelColor = Color.white;
-                bevelColor = new Color(1f, 1f, 1f, 0.28f);
-                break;
-            case Button3DTheme.PurplePink:
-                bgColor = ColorNeonPink;
-                labelColor = Color.white;
-                bevelColor = new Color(1f, 1f, 1f, 0.30f);
-                break;
-            case Button3DTheme.YellowDrop:
-                bgColor = new Color(1.0f, 0.88f, 0.15f, 1f);
-                labelColor = new Color(0.08f, 0.09f, 0.18f, 1f);
-                bevelColor = new Color(1f, 1f, 1f, 0.40f);
-                break;
-            case Button3DTheme.WhiteGhost:
-                bgColor = new Color(0.88f, 0.92f, 0.98f, 0.92f);
-                labelColor = new Color(0.08f, 0.12f, 0.24f, 1f);
-                bevelColor = new Color(1f, 1f, 1f, 0.50f);
-                break;
-            case Button3DTheme.Sapphire:
-            default:
-                bgColor = ColorCardDark;
-                labelColor = ColorNeonCyan;
-                bevelColor = ColorNeonCyan * 0.45f;
-                break;
-        }
+        UITheme.ButtonStyle style = UITheme.GetButtonStyle(theme);
+        Color bgColor = style.BgColor;
+        Color labelColor = style.LabelColor;
+        Color bevelColor = style.BevelColor;
 
         GameObject btnObj = CreatePanel(parent, name, bgColor, anchorMin, anchorMax, Vector2.zero, Vector2.zero, true, GetRoundedRectSprite());
         Button btn = btnObj.AddComponent<Button>();
@@ -1297,148 +1212,12 @@ public sealed class ProfessionalUIController : MonoBehaviour
         return text;
     }
 
-    // ==================== PROCEDURAL 9-SLICED 3D ARCADE BUTTON SPRITES ====================
-    public static Sprite GetGradientPinkPurpleSprite()
-    {
-        if (gradientPinkPurpleSprite != null) return gradientPinkPurpleSprite;
-        gradientPinkPurpleSprite = Create3DButtonSprite(
-            new Color(1.0f, 0.32f, 0.68f, 1f),
-            new Color(0.62f, 0.22f, 0.98f, 1f),
-            new Color(0.38f, 0.08f, 0.65f, 1f)
-        );
-        return gradientPinkPurpleSprite;
-    }
-
-    public static Sprite GetGreenBuySprite()
-    {
-        if (greenBuySprite != null) return greenBuySprite;
-        greenBuySprite = Create3DButtonSprite(
-            new Color(0.18f, 0.96f, 0.52f, 1f),
-            new Color(0.08f, 0.72f, 0.32f, 1f),
-            new Color(0.04f, 0.45f, 0.18f, 1f)
-        );
-        return greenBuySprite;
-    }
-
-    public static Sprite GetYellowDropSprite()
-    {
-        if (yellowDropSprite != null) return yellowDropSprite;
-        yellowDropSprite = Create3DButtonSprite(
-            new Color(1.0f, 0.94f, 0.25f, 1f),
-            new Color(0.98f, 0.72f, 0.05f, 1f),
-            new Color(0.70f, 0.45f, 0.02f, 1f)
-        );
-        return yellowDropSprite;
-    }
-
-    public static Sprite GetWhiteGhostSprite()
-    {
-        if (whiteGhostSprite != null) return whiteGhostSprite;
-        whiteGhostSprite = Create3DButtonSprite(
-            new Color(0.96f, 0.97f, 1.0f, 1f),
-            new Color(0.78f, 0.82f, 0.90f, 1f),
-            new Color(0.48f, 0.54f, 0.65f, 1f)
-        );
-        return whiteGhostSprite;
-    }
-
-    public static Sprite Create3DButtonSprite(Color topCol, Color botCol, Color bevelDarkCol, int w = 64, int h = 64, int r = 16)
-    {
-        Texture2D tex = new Texture2D(w, h, TextureFormat.RGBA32, false);
-        tex.filterMode = FilterMode.Bilinear;
-        Color[] cols = new Color[w * h];
-
-        for (int y = 0; y < h; y++)
-        {
-            float t = (float)y / (h - 1);
-            Color rowCol = Color.Lerp(botCol, topCol, t);
-
-            for (int x = 0; x < w; x++)
-            {
-                int dx = Mathf.Min(x, w - 1 - x);
-                int dy = Mathf.Min(y, h - 1 - y);
-
-                float alpha = 1f;
-                if (dx < r && dy < r)
-                {
-                    float dist = Vector2.Distance(new Vector2(dx, dy), new Vector2(r, r));
-                    alpha = Mathf.Clamp01(r - dist + 0.5f);
-                }
-
-                Color c = rowCol;
-                // Bevel inferior escurecido (efeito 3D profundidade arcade)
-                if (y < 8)
-                {
-                    c = Color.Lerp(bevelDarkCol, c, (float)y / 8f);
-                }
-                // Brilho no topo
-                else if (y > h - 6)
-                {
-                    c = Color.Lerp(c, Color.white, 0.35f);
-                }
-
-                cols[y * w + x] = new Color(c.r, c.g, c.b, c.a * alpha);
-            }
-        }
-        tex.SetPixels(cols);
-        tex.Apply();
-
-        return Sprite.Create(
-            tex,
-            new Rect(0, 0, w, h),
-            new Vector2(0.5f, 0.5f),
-            100f,
-            0,
-            SpriteMeshType.FullRect,
-            new Vector4(r + 2, r + 2, r + 2, r + 2)
-        );
-    }
-
-    public static Sprite GetRoundedRectSprite()
-    {
-        if (roundedRectSprite != null) return roundedRectSprite;
-        int size = 32; int r = 10;
-        Texture2D tex = new Texture2D(size, size, TextureFormat.RGBA32, false);
-        tex.filterMode = FilterMode.Bilinear;
-        Color[] cols = new Color[size * size];
-        for (int y = 0; y < size; y++)
-        {
-            for (int x = 0; x < size; x++)
-            {
-                int dx = Mathf.Min(x, size - 1 - x); int dy = Mathf.Min(y, size - 1 - y);
-                if (dx < r && dy < r)
-                {
-                    float dist = Vector2.Distance(new Vector2(dx, dy), new Vector2(r, r));
-                    float alpha = Mathf.Clamp01(r - dist + 0.5f);
-                    cols[y * size + x] = new Color(1f, 1f, 1f, alpha);
-                }
-                else cols[y * size + x] = Color.white;
-            }
-        }
-        tex.SetPixels(cols); tex.Apply();
-        roundedRectSprite = Sprite.Create(tex, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f), 100f, 0, SpriteMeshType.FullRect, new Vector4(r, r, r, r));
-        return roundedRectSprite;
-    }
-
-    public static Sprite GetCircleSprite()
-    {
-        if (circleSprite != null) return circleSprite;
-        int size = 64; float r = size * 0.5f;
-        Texture2D tex = new Texture2D(size, size, TextureFormat.RGBA32, false);
-        tex.filterMode = FilterMode.Bilinear;
-        Color[] cols = new Color[size * size];
-        Vector2 center = new Vector2(r - 0.5f, r - 0.5f);
-        for (int y = 0; y < size; y++)
-        {
-            for (int x = 0; x < size; x++)
-            {
-                float dist = Vector2.Distance(new Vector2(x, y), center);
-                float alpha = Mathf.Clamp01(r - dist + 0.5f);
-                cols[y * size + x] = new Color(1f, 1f, 1f, alpha);
-            }
-        }
-        tex.SetPixels(cols); tex.Apply();
-        circleSprite = Sprite.Create(tex, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f), 100f);
-        return circleSprite;
-    }
+    public static Sprite GetGradientPinkPurpleSprite() => UITheme.GetGradientPinkPurpleSprite();
+    public static Sprite GetGreenBuySprite() => UITheme.GetGreenBuySprite();
+    public static Sprite GetYellowDropSprite() => UITheme.GetYellowDropSprite();
+    public static Sprite GetWhiteGhostSprite() => UITheme.GetWhiteGhostSprite();
+    public static Sprite GetUISprite(string name, Vector4 border = default) => UITheme.GetUISprite(name, border);
+    public static Sprite GetPlushiePortrait(string prizeName) => UITheme.GetPlushiePortrait(prizeName);
+    public static Sprite GetRoundedRectSprite() => UITheme.GetRoundedRectSprite();
+    public static Sprite GetCircleSprite() => UITheme.GetCircleSprite();
 }

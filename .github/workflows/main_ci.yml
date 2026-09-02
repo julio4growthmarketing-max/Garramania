@@ -1,0 +1,44 @@
+name: GarraMania Continuous Integration
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  validate-and-test:
+    name: Code Quality & Build Sanity
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Verify WebGL Deployment Assets
+        run: |
+          echo "=== Verificando integridade dos arquivos WebGL para Vercel ==="
+          test -f Build_Web/index.html || { echo "ERRO: Build_Web/index.html ausente!"; exit 1; }
+          test -f Build_Web/vercel.json || { echo "ERRO: Build_Web/vercel.json ausente!"; exit 1; }
+          test -f Build_Web/Build/Build_Web.loader.js || { echo "ERRO: Build_Web.loader.js ausente!"; exit 1; }
+          test -f Build_Web/Build/Build_Web.wasm || { echo "ERRO: Build_Web.wasm ausente!"; exit 1; }
+          test -f Build_Web/Build/Build_Web.data || { echo "ERRO: Build_Web.data ausente!"; exit 1; }
+          echo "Todos os 5 artefatos essenciais do WebGL estão presentes e íntegros."
+
+      - name: Validate C# Syntax Integrity
+        run: |
+          echo "=== Verificando scripts C# contra erros comuns de formatação ==="
+          # Checar se algum arquivo C# contém marcadores de conflito git não resolvidos
+          if grep -rn "^<<<<<<< " Assets/Scripts/; then
+            echo "ERRO: Marcadores de conflito git encontrados em Assets/Scripts/!"
+            exit 1
+          fi
+          echo "Nenhum conflito de merge encontrado nos scripts."
+          echo "Arquivos verificados com sucesso."

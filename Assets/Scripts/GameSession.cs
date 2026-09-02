@@ -144,6 +144,14 @@ public class GameSession : MonoBehaviour
         {
             new GameObject("AudioFeedbackController").AddComponent<AudioFeedbackController>();
         }
+        if (FindFirstObjectByType<AccessibilityManager>() == null)
+        {
+            new GameObject("AccessibilityManager").AddComponent<AccessibilityManager>();
+        }
+        if (FindFirstObjectByType<LocalizationManager>() == null)
+        {
+            new GameObject("LocalizationManager").AddComponent<LocalizationManager>();
+        }
         if (FindFirstObjectByType<GameJuice>() == null)
         {
             new GameObject("GameJuice").AddComponent<GameJuice>();
