@@ -4,6 +4,14 @@ using UnityEngine;
 
 public static class WebGLBuilder
 {
+    [MenuItem("GarraMania/Recarregar Scripts")]
+    public static void ReloadScripts()
+    {
+        AssetDatabase.Refresh(ImportAssetOptions.ForceUpdate);
+        EditorUtility.RequestScriptReload();
+        Debug.Log("[GarraMania] Scripts e Assets recarregados com sucesso!");
+    }
+
     [MenuItem("GarraMania/Gerar Build WebGL Mobile")]
     public static void BuildWebGLMobile()
     {

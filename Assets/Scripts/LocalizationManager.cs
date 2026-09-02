@@ -15,11 +15,6 @@ public class LocalizationManager : MonoBehaviour
     public const string LANG_EN = "en-US";
     public const string LANG_ES = "es-ES";
 
-    [Serializable]
-    private class LangPack
-    {
-        public Dictionary<string, string> entries = new Dictionary<string, string>();
-    }
 
     private string currentLanguage = LANG_PT;
     private readonly Dictionary<string, Dictionary<string, string>> stringTable = new Dictionary<string, Dictionary<string, string>>();
