@@ -11,7 +11,7 @@
       ]
     },
     {
-      "source": "/(.*)\\.wasm",
+      "source": "/(.*)\\.wasm(.*)",
       "headers": [
         {
           "key": "Content-Type",
@@ -19,12 +19,12 @@
         },
         {
           "key": "Cache-Control",
-          "value": "no-cache, must-revalidate"
+          "value": "no-cache, no-store, must-revalidate"
         }
       ]
     },
     {
-      "source": "/(.*)\\.data",
+      "source": "/(.*)\\.data(.*)",
       "headers": [
         {
           "key": "Content-Type",
@@ -32,12 +32,12 @@
         },
         {
           "key": "Cache-Control",
-          "value": "no-cache, must-revalidate"
+          "value": "no-cache, no-store, must-revalidate"
         }
       ]
     },
     {
-      "source": "/(.*)\\.js",
+      "source": "/(.*)\\.js(.*)",
       "headers": [
         {
           "key": "Content-Type",
@@ -45,7 +45,7 @@
         },
         {
           "key": "Cache-Control",
-          "value": "no-cache, must-revalidate"
+          "value": "no-cache, no-store, must-revalidate"
         }
       ]
     }
