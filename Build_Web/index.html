@@ -52,12 +52,13 @@
       }
 
       var buildUrl = "Build";
-      var loaderUrl = buildUrl + "/Build_Web.loader.js";
+      var cacheBuster = "?v=" + Date.now();
+      var loaderUrl = buildUrl + "/Build_Web.loader.js" + cacheBuster;
       var config = {
         arguments: [],
-        dataUrl: buildUrl + "/Build_Web.data",
-        frameworkUrl: buildUrl + "/Build_Web.framework.js",
-        codeUrl: buildUrl + "/Build_Web.wasm",
+        dataUrl: buildUrl + "/Build_Web.data" + cacheBuster,
+        frameworkUrl: buildUrl + "/Build_Web.framework.js" + cacheBuster,
+        codeUrl: buildUrl + "/Build_Web.wasm" + cacheBuster,
         streamingAssetsUrl: "StreamingAssets",
         companyName: "DefaultCompany",
         productName: "ClawMachine",
