@@ -57,10 +57,23 @@ public class ArcadeCabinetBuilder
         // Vidro Fumê da Portinhola
         Material mVidroFume = CriarVidro(new Color(0.12f, 0.14f, 0.18f, 0.55f), 0.85f);
 
-        // Painel Galáxia
+        // Painel Traseiro / Wallpaper Neon da Cabine
         Material mGalaxy = CriarMaterialURP(Color.white, 0.70f, 0.15f);
-        Texture2D texGalaxy = Resources.Load<Texture2D>("Textures/GalaxyWallpaper");
-        if (texGalaxy != null) mGalaxy.mainTexture = texGalaxy;
+        Texture2D texGalaxy = Resources.Load<Texture2D>("Textures/Wallpaper_CyberNeon") ?? Resources.Load<Texture2D>("Textures/GalaxyWallpaper");
+        if (texGalaxy != null)
+        {
+            mGalaxy.mainTexture = texGalaxy;
+            mGalaxy.mainTextureScale = new Vector2(-1, -1);
+            mGalaxy.mainTextureOffset = new Vector2(1, 1);
+            mGalaxy.EnableKeyword("_EMISSION");
+            mGalaxy.SetTexture("_EmissionMap", texGalaxy);
+            if (mGalaxy.HasProperty("_EmissionMap"))
+            {
+                mGalaxy.SetTextureScale("_EmissionMap", new Vector2(-1, -1));
+                mGalaxy.SetTextureOffset("_EmissionMap", new Vector2(1, 1));
+            }
+            mGalaxy.SetColor("_EmissionColor", Color.white * 1.5f);
+        }
 
         // Arte Gráfica do Letreiro Marquee (GARRAMANIA Neon)
         Material mMarquee = new Material(Shader.Find("Universal Render Pipeline/Lit"));
@@ -183,15 +196,6 @@ public class ArcadeCabinetBuilder
         // Moldura do Mural
         Cubo("Moldura_Top_Fundo", new Vector3(0, 2.95f, 2.54f), new Vector3(5.1f, 0.12f, 0.06f), mAcoInox, rootParedes);
 
-        // Wallpaper Neon Retroiluminado GARRAMANIA (Fundo Completo do Vidro)
-        GameObject posterObj = GameObject.CreatePrimitive(PrimitiveType.Quad);
-        posterObj.name = "Poster_Neon_Garramania";
-        posterObj.transform.SetParent(rootParedes, false);
-        posterObj.transform.position = new Vector3(0, 0.5f, 2.54f);
-        posterObj.transform.localScale = new Vector3(5.0f, 5.0f, 1.0f);
-        posterObj.transform.rotation = Quaternion.identity;
-        Object.Destroy(posterObj.GetComponent<Collider>());
-        posterObj.GetComponent<MeshRenderer>().material = mMarquee;
 
         // Vidros Físicos PBR Transparentes (Reflexos nítidos da garra, pelúcias e neons)
         // Cubo("Vidro_Frontal", new Vector3(0, 0.5f, -2.55f), new Vector3(4.8f, 4.8f, 0.02f), mVidroGabinete, rootParedes); // Omitido na frente para visibilidade cristalina
