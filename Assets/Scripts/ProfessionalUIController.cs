@@ -209,7 +209,7 @@ public sealed class ProfessionalUIController : MonoBehaviour
         {
             spectatorTimer = 0f;
             simulatedSpectators = Mathf.Clamp(simulatedSpectators + UnityEngine.Random.Range(-1, 2), 1, 6);
-            if (spectatorCountText != null) spectatorCountText.text = $"{simulatedSpectators}";
+            if (spectatorCountText != null) spectatorCountText.text = $"AO VIVO: {simulatedSpectators}";
         }
     }
 
@@ -307,7 +307,7 @@ public sealed class ProfessionalUIController : MonoBehaviour
 
     private void HandleCreditsChanged(int value)
     {
-        if (creditsText != null) creditsText.text = $"{value}";
+        if (creditsText != null) creditsText.text = $"FICHAS: {value}";
     }
 
     private void HandlePrizeDelivered(Prize prize, int total) { }
@@ -511,10 +511,9 @@ public sealed class ProfessionalUIController : MonoBehaviour
             themeTotal = CollectionManager.Instance.GetTotalCount();
         }
 
-        string icon = theme != null ? theme.badgeIcon : "🏆";
-        string hudBadge = $"{icon} ({themeUnlocked}/{themeTotal})";
+        string hudBadge = $"ÁLBUM: {themeUnlocked}/{themeTotal}";
         if (albumHudButtonText != null) albumHudButtonText.text = hudBadge;
-        if (menuAlbumButtonText != null) menuAlbumButtonText.text = $"🏆 COLEÇÃO ({themeUnlocked}/{themeTotal})";
+        if (menuAlbumButtonText != null) menuAlbumButtonText.text = $"ÁLBUM DE COLEÇÃO ({themeUnlocked}/{themeTotal})";
     }
 
     private void UpdateDailyBadgeStatus()
@@ -576,31 +575,44 @@ public sealed class ProfessionalUIController : MonoBehaviour
         bool isP = Screen.width < Screen.height;
 
         Vector2 backMin = isP ? new Vector2(0.03f, 0.925f) : new Vector2(0.02f, 0.920f);
-        Vector2 backMax = isP ? new Vector2(0.14f, 0.985f) : new Vector2(0.08f, 0.988f);
-        CreateArcadeButton(parent, "BackBtn", backMin, backMax, Button3DTheme.WhiteGhost, () => {
+        Vector2 backMax = isP ? new Vector2(0.12f, 0.985f) : new Vector2(0.07f, 0.988f);
+        GameObject backBtn = CreateArcadeButton(parent, "BackBtn", backMin, backMax, Button3DTheme.WhiteGhost, () => {
             if (session != null && session.CurrentState == GameState.Playing)
             {
                 session.ResetSession();
                 InputRouter.Instance?.SetBlocked(true);
             }
-        }, "←", 30);
+            else if (albumPanel != null && albumPanel.activeSelf)
+            {
+                CloseAlbum();
+            }
+            else if (inspectModal != null && inspectModal.activeSelf)
+            {
+                inspectModal.SetActive(false);
+            }
+        }, "X", 26);
+        Text backTxt = backBtn.GetComponentInChildren<Text>();
+        if (backTxt != null)
+        {
+            backTxt.text = "X";
+            backTxt.color = new Color(0.90f, 0.15f, 0.20f);
+            backTxt.fontStyle = FontStyle.Bold;
+            backTxt.fontSize = isP ? 26 : 28;
+        }
 
-        Vector2 specMin = isP ? new Vector2(0.16f, 0.925f) : new Vector2(0.09f, 0.920f);
-        Vector2 specMax = isP ? new Vector2(0.34f, 0.985f) : new Vector2(0.19f, 0.988f);
+        Vector2 specMin = isP ? new Vector2(0.13f, 0.925f) : new Vector2(0.08f, 0.920f);
+        Vector2 specMax = isP ? new Vector2(0.36f, 0.985f) : new Vector2(0.20f, 0.988f);
         GameObject specPill = CreateGlassPill(parent, "SpecPill", specMin, specMax, ColorNeonCyan);
-        CreateText(specPill.transform, "SpecIcon", "👥", new Vector2(0.05f, 0.05f), new Vector2(0.40f, 0.95f), Vector2.zero, Vector2.zero, 26, Color.white, TextAnchor.MiddleCenter, false);
-        spectatorCountText = CreateText(specPill.transform, "SpecCount", "2", new Vector2(0.40f, 0.05f), new Vector2(0.95f, 0.95f), Vector2.zero, Vector2.zero, 26, Color.white, TextAnchor.MiddleCenter, true);
+        spectatorCountText = CreateText(specPill.transform, "SpecCount", "AO VIVO: 2", Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero, isP ? 16 : 18, ColorNeonCyan, TextAnchor.MiddleCenter, true);
 
-        Vector2 tokMin = isP ? new Vector2(0.36f, 0.925f) : new Vector2(0.21f, 0.920f);
-        Vector2 tokMax = isP ? new Vector2(0.68f, 0.985f) : new Vector2(0.42f, 0.988f);
+        Vector2 tokMin = isP ? new Vector2(0.38f, 0.925f) : new Vector2(0.22f, 0.920f);
+        Vector2 tokMax = isP ? new Vector2(0.66f, 0.985f) : new Vector2(0.42f, 0.988f);
         GameObject tokPill = CreateGlassPill(parent, "TokenPill", tokMin, tokMax, ColorNeonGold);
+        creditsText = CreateText(tokPill.transform, "TokenCount", "FICHAS: 3", Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero, isP ? 18 : 20, ColorNeonGold, TextAnchor.MiddleCenter, true);
 
-        CreateText(tokPill.transform, "CoinIcon", "🪙", new Vector2(0.04f, 0.05f), new Vector2(0.30f, 0.95f), Vector2.zero, Vector2.zero, 26, ColorNeonGold, TextAnchor.MiddleCenter, false);
-        creditsText = CreateText(tokPill.transform, "TokenCount", "160", new Vector2(0.30f, 0.05f), new Vector2(0.95f, 0.95f), Vector2.zero, Vector2.zero, 28, ColorNeonGold, TextAnchor.MiddleCenter, true);
-
-        Vector2 albMin = isP ? new Vector2(0.70f, 0.925f) : new Vector2(0.84f, 0.920f);
+        Vector2 albMin = isP ? new Vector2(0.68f, 0.925f) : new Vector2(0.78f, 0.920f);
         Vector2 albMax = isP ? new Vector2(0.97f, 0.985f) : new Vector2(0.98f, 0.988f);
-        GameObject albBtn = CreateArcadeButton(parent, "AlbumHudBtn", albMin, albMax, Button3DTheme.PurplePink, OpenAlbum, "🏆 ÁLBUM", 22);
+        GameObject albBtn = CreateArcadeButton(parent, "AlbumHudBtn", albMin, albMax, Button3DTheme.PurplePink, OpenAlbum, "ÁLBUM: 0/6", isP ? 16 : 18);
         albumHudButtonText = albBtn.GetComponentInChildren<Text>();
     }
 
@@ -706,21 +718,39 @@ public sealed class ProfessionalUIController : MonoBehaviour
             : "CYBER NEON 🕹️";
         themeSelectorText = CreateText(themeSelPanel.transform, "ThemeName", initialThemeName, new Vector2(0.20f, 0f), new Vector2(0.80f, 1f), Vector2.zero, Vector2.zero, isP ? 20 : 22, ColorNeonGold, TextAnchor.MiddleCenter, true);
 
-        CreateArcadeButton(themeSelPanel.transform, "PrevThemeBtn", new Vector2(0.02f, 0.10f), new Vector2(0.18f, 0.90f), Button3DTheme.Sapphire, () => {
+        GameObject prevBtn = CreateArcadeButton(themeSelPanel.transform, "PrevThemeBtn", new Vector2(0.02f, 0.10f), new Vector2(0.18f, 0.90f), Button3DTheme.Sapphire, () => {
             if (CabinetThemeManager.Instance != null)
             {
                 CabinetThemeManager.Instance.PreviousTheme();
                 if (themeSelectorText != null) themeSelectorText.text = CabinetThemeManager.Instance.CurrentTheme.displayName;
+                UpdateAlbumBadges();
             }
-        }, "◀", 22);
+        }, "<", 28);
+        Text prevTxt = prevBtn.GetComponentInChildren<Text>();
+        if (prevTxt != null)
+        {
+            prevTxt.text = "<";
+            prevTxt.fontStyle = FontStyle.Bold;
+            prevTxt.fontSize = isP ? 26 : 30;
+            prevTxt.color = ColorNeonCyan;
+        }
 
-        CreateArcadeButton(themeSelPanel.transform, "NextThemeBtn", new Vector2(0.82f, 0.10f), new Vector2(0.98f, 0.90f), Button3DTheme.Sapphire, () => {
+        GameObject nextBtn = CreateArcadeButton(themeSelPanel.transform, "NextThemeBtn", new Vector2(0.82f, 0.10f), new Vector2(0.98f, 0.90f), Button3DTheme.Sapphire, () => {
             if (CabinetThemeManager.Instance != null)
             {
                 CabinetThemeManager.Instance.NextTheme();
                 if (themeSelectorText != null) themeSelectorText.text = CabinetThemeManager.Instance.CurrentTheme.displayName;
+                UpdateAlbumBadges();
             }
-        }, "▶", 22);
+        }, ">", 28);
+        Text nextTxt = nextBtn.GetComponentInChildren<Text>();
+        if (nextTxt != null)
+        {
+            nextTxt.text = ">";
+            nextTxt.fontStyle = FontStyle.Bold;
+            nextTxt.fontSize = isP ? 26 : 30;
+            nextTxt.color = ColorNeonCyan;
+        }
 
         // 3. Botão Álbum de Prêmios
         CreateArcadeButton(sheet.transform, "AlbumBtn", new Vector2(0.06f, 0.06f), new Vector2(0.94f, 0.32f), Button3DTheme.Emerald, OpenAlbum, "🏆 ÁLBUM DE COLEÇÃO", isP ? 24 : 26);
