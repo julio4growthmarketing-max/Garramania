@@ -189,8 +189,15 @@ public sealed class CabinetThemeManager : MonoBehaviour
             if (tex != null)
             {
                 m.mainTexture = tex;
+                m.mainTextureScale = new Vector2(1, -1);
+                m.mainTextureOffset = new Vector2(0, 1);
                 m.EnableKeyword("_EMISSION");
                 m.SetTexture("_EmissionMap", tex);
+                if (m.HasProperty("_EmissionMap"))
+                {
+                    m.SetTextureScale("_EmissionMap", new Vector2(1, -1));
+                    m.SetTextureOffset("_EmissionMap", new Vector2(0, 1));
+                }
                 m.SetColor("_EmissionColor", Color.white * 2.2f);
             }
             pObj.GetComponent<MeshRenderer>().material = m;
@@ -220,8 +227,15 @@ public sealed class CabinetThemeManager : MonoBehaviour
                 if (tex != null)
                 {
                     r.material.mainTexture = tex;
+                    r.material.mainTextureScale = new Vector2(1, -1);
+                    r.material.mainTextureOffset = new Vector2(0, 1);
                     r.material.EnableKeyword("_EMISSION");
                     r.material.SetTexture("_EmissionMap", tex);
+                    if (r.material.HasProperty("_EmissionMap"))
+                    {
+                        r.material.SetTextureScale("_EmissionMap", new Vector2(1, -1));
+                        r.material.SetTextureOffset("_EmissionMap", new Vector2(0, 1));
+                    }
                     r.material.SetColor("_EmissionColor", Color.white * 2.2f);
                 }
             }

@@ -68,8 +68,15 @@ public class ArcadeCabinetBuilder
         if (texMarquee != null)
         {
             mMarquee.mainTexture = texMarquee;
+            mMarquee.mainTextureScale = new Vector2(1, -1);
+            mMarquee.mainTextureOffset = new Vector2(0, 1);
             mMarquee.EnableKeyword("_EMISSION");
             mMarquee.SetTexture("_EmissionMap", texMarquee);
+            if (mMarquee.HasProperty("_EmissionMap"))
+            {
+                mMarquee.SetTextureScale("_EmissionMap", new Vector2(1, -1));
+                mMarquee.SetTextureOffset("_EmissionMap", new Vector2(0, 1));
+            }
             mMarquee.SetColor("_EmissionColor", Color.white * 1.8f);
         }
         else
