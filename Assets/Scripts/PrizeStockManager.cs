@@ -186,7 +186,73 @@ public sealed class PrizeStockManager : MonoBehaviour
     public void RegisterSpawned(Prize prize, PrizeStockEntry entry)
     {
         if (prize == null || entry == null) return;
-        prize.ConfigureFromStock(entry.resourceName, entry.rarity, entry.baseCaptureChance);
+        string variantId = DetermineVariantForSpawn(entry.resourceName);
+        PrizeRarity rarity = GetVariantRarity(variantId, entry.rarity);
+        prize.ConfigureFromStock(variantId, rarity, entry.baseCaptureChance);
+    }
+
+    public string DetermineVariantForSpawn(string baseName)
+    {
+        var theme = CabinetThemeManager.Instance != null ? CabinetThemeManager.Instance.CurrentTheme : null;
+        float r = UnityEngine.Random.value;
+        string b = baseName.ToLowerInvariant();
+
+        if (b.Contains("fox"))
+        {
+            if (theme != null && theme.themeType == CabinetThemeType.KawaiiPastel && r < 0.60f) return "Fox_Arctic";
+            if (theme != null && theme.themeType == CabinetThemeType.GoldCasino && r < 0.40f) return "Fox_Shadow";
+            if (r < 0.30f) return "Fox_Arctic";
+            if (r < 0.45f) return "Fox_Shadow";
+            return "Fox";
+        }
+        else if (b.Contains("bear") || b.Contains("green"))
+        {
+            if (theme != null && theme.themeType == CabinetThemeType.KawaiiPastel)
+            {
+                if (r < 0.45f) return "Bear_Panda";
+                if (r < 0.80f) return "Bear_Polar";
+            }
+            if (theme != null && theme.themeType == CabinetThemeType.GoldCasino && r < 0.30f) return "Bear_Galaxy";
+            if (r < 0.25f) return "Bear_Panda";
+            if (r < 0.50f) return "Bear_Polar";
+            if (r < 0.65f) return "Bear_Galaxy";
+            return "GreenBear";
+        }
+        else if (b.Contains("fish") || b.Contains("balloon"))
+        {
+            if (theme != null && theme.themeType == CabinetThemeType.GoldCasino && r < 0.40f) return "Fish_Gold";
+            if (r < 0.35f) return "Fish_Clown";
+            if (r < 0.50f) return "Fish_Gold";
+            return "BalloonFish";
+        }
+        else if (b.Contains("koala"))
+        {
+            if (theme != null && theme.themeType == CabinetThemeType.GoldCasino && r < 0.35f) return "Koala_King";
+            if (r < 0.35f) return "Koala_Eucalyptus";
+            if (r < 0.50f) return "Koala_King";
+            return "Koala";
+        }
+        else if (b.Contains("badger"))
+        {
+            if (r < 0.40f) return "Badger_Honey";
+            return "Badger";
+        }
+        else if (b.Contains("porky"))
+        {
+            if (theme != null && theme.themeType == CabinetThemeType.KawaiiPastel && r < 0.60f) return "Porky_Classic";
+            if (theme != null && theme.themeType == CabinetThemeType.GoldCasino && r < 0.40f) return "Porky_Diamond";
+            if (r < 0.30f) return "Porky_Classic";
+            if (r < 0.50f) return "Porky_Diamond";
+            return "Porky";
+        }
+
+        return baseName;
+    }
+
+    private PrizeRarity GetVariantRarity(string variantId, PrizeRarity fallback)
+    {
+        var item = CollectionManager.Instance != null ? CollectionManager.Instance.GetItem(variantId) : null;
+        return item != null ? item.rarity : fallback;
     }
 
     public void RegisterAttemptStarted()

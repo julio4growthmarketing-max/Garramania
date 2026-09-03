@@ -128,6 +128,9 @@ public sealed class ProfessionalUIController : MonoBehaviour
     private Image goldenBtnBg;
     private Text goldenBtnText;
     private Text camButtonText;
+    private Text themeSelectorText;
+    private int albumCurrentPage = 0;
+    private Text albumPageText;
 
     private ClawController claw;
     private GameSession session;
@@ -655,19 +658,49 @@ public sealed class ProfessionalUIController : MonoBehaviour
     {
         bool isP = Screen.width < Screen.height;
 
-        Vector2 logoMin = isP ? new Vector2(0.06f, 0.80f) : new Vector2(0.30f, 0.82f);
+        Vector2 logoMin = isP ? new Vector2(0.06f, 0.78f) : new Vector2(0.30f, 0.82f);
         Vector2 logoMax = isP ? new Vector2(0.94f, 0.94f) : new Vector2(0.70f, 0.94f);
         GameObject logoGroup = CreatePanel(parent, "HeaderLogo", Color.clear, logoMin, logoMax, Vector2.zero, Vector2.zero, false);
         CreateText(logoGroup.transform, "LogoTitle", "GARRAMANIA", new Vector2(0f, 0.35f), Vector2.one, Vector2.zero, Vector2.zero, isP ? 48 : 52, ColorNeonGold, TextAnchor.MiddleCenter, true);
         CreateText(logoGroup.transform, "LogoSub", "FLIPERAMA & REAL CLAW MACHINE", Vector2.zero, new Vector2(1f, 0.38f), Vector2.zero, Vector2.zero, 22, ColorNeonCyan, TextAnchor.MiddleCenter, true);
 
-        Vector2 sheetMin = isP ? new Vector2(0.06f, 0.05f) : new Vector2(0.25f, 0.05f);
-        Vector2 sheetMax = isP ? new Vector2(0.94f, 0.34f) : new Vector2(0.75f, 0.38f);
+        Vector2 sheetMin = isP ? new Vector2(0.06f, 0.04f) : new Vector2(0.25f, 0.04f);
+        Vector2 sheetMax = isP ? new Vector2(0.94f, 0.42f) : new Vector2(0.75f, 0.46f);
         GameObject sheet = CreatePanel(parent, "MenuSheet", ColorBgDeepNavy, sheetMin, sheetMax, Vector2.zero, Vector2.zero, true, GetRoundedRectSprite());
         CreatePanel(sheet.transform, "SheetBorder", ColorNeonCyan * 0.45f, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero, false, GetRoundedRectSprite()).transform.SetAsFirstSibling();
 
-        CreateArcadeButton(sheet.transform, "PlayBtn", new Vector2(0.06f, 0.54f), new Vector2(0.94f, 0.92f), Button3DTheme.PurplePink, StartGame, "JOGAR AGORA! 🕹️", isP ? 34 : 36);
-        CreateArcadeButton(sheet.transform, "AlbumBtn", new Vector2(0.06f, 0.08f), new Vector2(0.94f, 0.46f), Button3DTheme.Sapphire, OpenAlbum, "🏆 ÁLBUM DE PRÊMIOS", isP ? 26 : 28);
+        // 1. Botão Jogar
+        CreateArcadeButton(sheet.transform, "PlayBtn", new Vector2(0.06f, 0.68f), new Vector2(0.94f, 0.94f), Button3DTheme.PurplePink, StartGame, "JOGAR AGORA! 🕹️", isP ? 34 : 36);
+
+        // 2. Seletor de Cabine Temática (◀ TEMA ▶)
+        Vector2 themeMin = new Vector2(0.06f, 0.38f);
+        Vector2 themeMax = new Vector2(0.94f, 0.62f);
+        GameObject themeSelPanel = CreatePanel(sheet.transform, "ThemeSelector", ColorCardDark, themeMin, themeMax, Vector2.zero, Vector2.zero, false, GetRoundedRectSprite());
+        CreatePanel(themeSelPanel.transform, "ThemeBorder", ColorNeonGold * 0.40f, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero, false, GetRoundedRectSprite()).transform.SetAsFirstSibling();
+
+        string initialThemeName = CabinetThemeManager.Instance != null && CabinetThemeManager.Instance.CurrentTheme != null 
+            ? CabinetThemeManager.Instance.CurrentTheme.displayName 
+            : "CYBER NEON 🕹️";
+        themeSelectorText = CreateText(themeSelPanel.transform, "ThemeName", initialThemeName, new Vector2(0.20f, 0f), new Vector2(0.80f, 1f), Vector2.zero, Vector2.zero, isP ? 20 : 22, ColorNeonGold, TextAnchor.MiddleCenter, true);
+
+        CreateArcadeButton(themeSelPanel.transform, "PrevThemeBtn", new Vector2(0.02f, 0.10f), new Vector2(0.18f, 0.90f), Button3DTheme.Sapphire, () => {
+            if (CabinetThemeManager.Instance != null)
+            {
+                CabinetThemeManager.Instance.PreviousTheme();
+                if (themeSelectorText != null) themeSelectorText.text = CabinetThemeManager.Instance.CurrentTheme.displayName;
+            }
+        }, "◀", 22);
+
+        CreateArcadeButton(themeSelPanel.transform, "NextThemeBtn", new Vector2(0.82f, 0.10f), new Vector2(0.98f, 0.90f), Button3DTheme.Sapphire, () => {
+            if (CabinetThemeManager.Instance != null)
+            {
+                CabinetThemeManager.Instance.NextTheme();
+                if (themeSelectorText != null) themeSelectorText.text = CabinetThemeManager.Instance.CurrentTheme.displayName;
+            }
+        }, "▶", 22);
+
+        // 3. Botão Álbum de Prêmios
+        CreateArcadeButton(sheet.transform, "AlbumBtn", new Vector2(0.06f, 0.06f), new Vector2(0.94f, 0.32f), Button3DTheme.Emerald, OpenAlbum, "🏆 ÁLBUM DE COLEÇÃO", isP ? 24 : 26);
     }
 
     private void BuildDailyRewardModal() { }
@@ -739,18 +772,42 @@ public sealed class ProfessionalUIController : MonoBehaviour
     {
         bool isP = Screen.width < Screen.height;
         Vector2 sheetMin = isP ? new Vector2(0.04f, 0.02f) : new Vector2(0.18f, 0.02f);
-        Vector2 sheetMax = isP ? new Vector2(0.96f, 0.90f) : new Vector2(0.82f, 0.94f);
+        Vector2 sheetMax = isP ? new Vector2(0.96f, 0.92f) : new Vector2(0.82f, 0.96f);
 
         GameObject window = CreatePanel(parent, "AlbumWindow", ColorBgDeepNavy, sheetMin, sheetMax, Vector2.zero, Vector2.zero, true, GetRoundedRectSprite());
         CreatePanel(window.transform, "Border", ColorNeonCyan * 0.50f, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero, false, GetRoundedRectSprite()).transform.SetAsFirstSibling();
 
-        CreateText(window.transform, "Header", "🏆 ÁLBUM DE COLEÇÃO", new Vector2(0.05f, 0.915f), new Vector2(0.95f, 0.985f), Vector2.zero, Vector2.zero, isP ? 42 : 46, ColorNeonGold, TextAnchor.MiddleCenter, true);
-        albumProgressText = CreateText(window.transform, "ProgressPill", "COLEÇÃO: 0 / 6 DESBLOQUEADOS (0%)", new Vector2(0.05f, 0.855f), new Vector2(0.95f, 0.910f), Vector2.zero, Vector2.zero, 26, ColorNeonCyan, TextAnchor.MiddleCenter, true);
+        CreateText(window.transform, "Header", "🏆 ÁLBUM DE COLEÇÃO", new Vector2(0.05f, 0.925f), new Vector2(0.95f, 0.985f), Vector2.zero, Vector2.zero, isP ? 38 : 42, ColorNeonGold, TextAnchor.MiddleCenter, true);
+        albumProgressText = CreateText(window.transform, "ProgressPill", "COLEÇÃO: 0 / 18 DESBLOQUEADOS (0%)", new Vector2(0.05f, 0.865f), new Vector2(0.95f, 0.920f), Vector2.zero, Vector2.zero, 24, ColorNeonCyan, TextAnchor.MiddleCenter, true);
 
-        GameObject gridObj = CreatePanel(window.transform, "GridContainer", Color.clear, new Vector2(0.04f, 0.12f), new Vector2(0.96f, 0.84f), Vector2.zero, Vector2.zero, false);
+        GameObject gridObj = CreatePanel(window.transform, "GridContainer", Color.clear, new Vector2(0.04f, 0.16f), new Vector2(0.96f, 0.85f), Vector2.zero, Vector2.zero, false);
         albumGridContainer = gridObj.transform;
 
-        CreateArcadeButton(window.transform, "CloseAlbumBtn", new Vector2(0.10f, 0.020f), new Vector2(0.90f, 0.100f), Button3DTheme.WhiteGhost, CloseAlbum, "VOLTAR À MÁQUINA", 28);
+        // Controles de Paginação (◀ PÁGINA 1 / 3 ▶)
+        Vector2 navMin = new Vector2(0.05f, 0.085f);
+        Vector2 navMax = new Vector2(0.95f, 0.150f);
+        GameObject navPanel = CreatePanel(window.transform, "NavPanel", Color.clear, navMin, navMax, Vector2.zero, Vector2.zero, false);
+
+        CreateArcadeButton(navPanel.transform, "PrevPageBtn", new Vector2(0.02f, 0.05f), new Vector2(0.28f, 0.95f), Button3DTheme.Sapphire, () => {
+            if (albumCurrentPage > 0)
+            {
+                albumCurrentPage--;
+                BuildAlbumGrid();
+            }
+        }, "◀ ANTERIOR", 20);
+
+        albumPageText = CreateText(navPanel.transform, "PageIndicator", "PÁGINA 1 / 3", new Vector2(0.30f, 0f), new Vector2(0.70f, 1f), Vector2.zero, Vector2.zero, 22, Color.white, TextAnchor.MiddleCenter, true);
+
+        CreateArcadeButton(navPanel.transform, "NextPageBtn", new Vector2(0.72f, 0.05f), new Vector2(0.98f, 0.95f), Button3DTheme.Sapphire, () => {
+            int totalPages = Mathf.CeilToInt((float)CollectionManager.Instance.GetTotalCount() / 6f);
+            if (albumCurrentPage < totalPages - 1)
+            {
+                albumCurrentPage++;
+                BuildAlbumGrid();
+            }
+        }, "PRÓXIMA ▶", 20);
+
+        CreateArcadeButton(window.transform, "CloseAlbumBtn", new Vector2(0.10f, 0.015f), new Vector2(0.90f, 0.075f), Button3DTheme.WhiteGhost, CloseAlbum, "VOLTAR À MÁQUINA", 24);
 
         BuildInspectModal(parent);
     }
@@ -764,6 +821,10 @@ public sealed class ProfessionalUIController : MonoBehaviour
         var allItems = CollectionManager.Instance.GetAllItems();
         int unlocked = CollectionManager.Instance.GetUnlockedCount();
         int total = CollectionManager.Instance.GetTotalCount();
+        int itemsPerPage = 6;
+        int totalPages = Mathf.Max(1, Mathf.CeilToInt((float)total / itemsPerPage));
+
+        albumCurrentPage = Mathf.Clamp(albumCurrentPage, 0, totalPages - 1);
 
         if (albumProgressText != null)
         {
@@ -771,14 +832,23 @@ public sealed class ProfessionalUIController : MonoBehaviour
             albumProgressText.text = $"COLEÇÃO: {unlocked} / {total} DESBLOQUEADOS ({pct}%)";
         }
 
+        if (albumPageText != null)
+        {
+            albumPageText.text = $"PÁGINA {albumCurrentPage + 1} / {totalPages}";
+        }
+
         int cols = isP ? 2 : 3;
         int rows = isP ? 3 : 2;
 
-        for (int i = 0; i < allItems.Count; i++)
+        int startIndex = albumCurrentPage * itemsPerPage;
+        int endIndex = Mathf.Min(startIndex + itemsPerPage, allItems.Count);
+
+        for (int i = startIndex; i < endIndex; i++)
         {
             var item = allItems[i];
-            int c = i % cols;
-            int r = rows - 1 - (i / cols);
+            int relIdx = i - startIndex;
+            int c = relIdx % cols;
+            int r = rows - 1 - (relIdx / cols);
 
             float cellW = 1.0f / cols;
             float cellH = 1.0f / rows;
@@ -809,10 +879,10 @@ public sealed class ProfessionalUIController : MonoBehaviour
                 GameObject countPill = CreateGlassPill(card.transform, "CountPill", new Vector2(0.55f, 0.74f), new Vector2(0.96f, 0.95f), ColorNeonGold);
                 CreateText(countPill.transform, "CountText", $"×{item.count}", Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero, 20, ColorNeonGold, TextAnchor.MiddleCenter, true);
 
-                CreateText(card.transform, "Name", item.displayName.ToUpperInvariant(), new Vector2(0.04f, 0.20f), new Vector2(0.96f, 0.40f), Vector2.zero, Vector2.zero, 26, Color.white, TextAnchor.MiddleCenter, true);
+                CreateText(card.transform, "Name", item.displayName.ToUpperInvariant(), new Vector2(0.04f, 0.20f), new Vector2(0.96f, 0.40f), Vector2.zero, Vector2.zero, 24, Color.white, TextAnchor.MiddleCenter, true);
 
-                string tag = item.rarity == PrizeRarity.Rare ? "★ RARO" : item.rarity == PrizeRarity.Uncommon ? "★ INCOMUM" : "COMUM";
-                CreateText(card.transform, "RarityTag", tag, new Vector2(0.04f, 0.05f), new Vector2(0.96f, 0.20f), Vector2.zero, Vector2.zero, 22, rarityColor, TextAnchor.MiddleCenter, true);
+                string tag = item.rarity == PrizeRarity.Legendary ? "★ LENDÁRIO" : item.rarity == PrizeRarity.Rare ? "★ RARO" : item.rarity == PrizeRarity.Uncommon ? "★ INCOMUM" : "COMUM";
+                CreateText(card.transform, "RarityTag", tag, new Vector2(0.04f, 0.05f), new Vector2(0.96f, 0.20f), Vector2.zero, Vector2.zero, 20, rarityColor, TextAnchor.MiddleCenter, true);
             }
             else
             {
@@ -820,8 +890,8 @@ public sealed class ProfessionalUIController : MonoBehaviour
                 CreatePanel(lockCircle.transform, "LockRim", Color.white * 0.15f, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero, false, GetCircleSprite());
                 CreateText(lockCircle.transform, "LockMark", "?", Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero, 34, new Color(0.5f, 0.65f, 0.85f, 0.6f), TextAnchor.MiddleCenter, true);
 
-                CreateText(card.transform, "Name", "???", new Vector2(0.04f, 0.16f), new Vector2(0.96f, 0.28f), Vector2.zero, Vector2.zero, 24, new Color(0.85f, 0.9f, 1f, 0.95f), TextAnchor.MiddleCenter, true);
-                CreateText(card.transform, "Hint", "BLOQUEADO", new Vector2(0.04f, 0.04f), new Vector2(0.96f, 0.16f), Vector2.zero, Vector2.zero, 22, new Color(0.6f, 0.7f, 0.85f, 0.8f), TextAnchor.MiddleCenter, false);
+                CreateText(card.transform, "Name", "???", new Vector2(0.04f, 0.16f), new Vector2(0.96f, 0.28f), Vector2.zero, Vector2.zero, 22, new Color(0.85f, 0.9f, 1f, 0.95f), TextAnchor.MiddleCenter, true);
+                CreateText(card.transform, "Hint", "BLOQUEADO", new Vector2(0.04f, 0.04f), new Vector2(0.96f, 0.16f), Vector2.zero, Vector2.zero, 20, new Color(0.6f, 0.7f, 0.85f, 0.8f), TextAnchor.MiddleCenter, false);
             }
         }
     }

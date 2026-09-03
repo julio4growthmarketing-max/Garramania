@@ -53,9 +53,18 @@ public sealed class CollectionManager : MonoBehaviour
     public static readonly Color ColorCommon = new Color(0.00f, 0.93f, 1.00f, 1f);     // Ciano Neon
     public static readonly Color ColorUncommon = new Color(0.78f, 0.25f, 1.00f, 1f);   // Violeta Cósmico
     public static readonly Color ColorRare = new Color(1.00f, 0.82f, 0.10f, 1f);       // Ouro 24k
+    public static readonly Color ColorLegendary = new Color(1.00f, 0.20f, 0.85f, 1f);  // Prisma Neon / Magenta Estelar
 
     private readonly Dictionary<string, CollectionItem> items = new Dictionary<string, CollectionItem>(StringComparer.OrdinalIgnoreCase);
-    private readonly List<string> orderedIds = new List<string> { "Fox", "GreenBear", "BalloonFish", "Koala", "Badger", "Porky" };
+    private readonly List<string> orderedIds = new List<string> 
+    { 
+        "Fox", "Fox_Arctic", "Fox_Shadow",
+        "GreenBear", "Bear_Panda", "Bear_Polar", "Bear_Galaxy",
+        "BalloonFish", "Fish_Clown", "Fish_Gold",
+        "Koala", "Koala_Eucalyptus", "Koala_King",
+        "Badger", "Badger_Honey",
+        "Porky_Classic", "Porky", "Porky_Diamond"
+    };
 
     public UnityEvent<CaptureResult> OnPrizeCaptured = new UnityEvent<CaptureResult>();
     public UnityEvent OnCollectionUpdated = new UnityEvent();
@@ -90,6 +99,7 @@ public sealed class CollectionManager : MonoBehaviour
     {
         items.Clear();
 
+        // --- FAMÍLIA RAPOSA ---
         items["Fox"] = new CollectionItem
         {
             id = "Fox",
@@ -98,7 +108,24 @@ public sealed class CollectionManager : MonoBehaviour
             lore = "Esperta e veloz! Adora se aconchegar nos cantos da vitrine. Um dos clássicos favoritos dos fliperamas.",
             themeColor = ColorCommon
         };
+        items["Fox_Arctic"] = new CollectionItem
+        {
+            id = "Fox_Arctic",
+            displayName = "Raposa do Ártico",
+            rarity = PrizeRarity.Uncommon,
+            lore = "Pelagem branca pura como a neve e olhos ciano. Rara de ser avistada fora das montanhas geladas.",
+            themeColor = ColorUncommon
+        };
+        items["Fox_Shadow"] = new CollectionItem
+        {
+            id = "Fox_Shadow",
+            displayName = "Raposa Sombria",
+            rarity = PrizeRarity.Rare,
+            lore = "Misteriosa e furtiva como uma ninja. Emite um brilho espectral magenta que fascina colecionadores experientes.",
+            themeColor = ColorRare
+        };
 
+        // --- FAMÍLIA URSO ---
         items["GreenBear"] = new CollectionItem
         {
             id = "GreenBear",
@@ -107,7 +134,32 @@ public sealed class CollectionManager : MonoBehaviour
             lore = "O clássico mascote com pelo aveludado e cheirinho de hortelã. Muito fofo e ótimo para treinar a mira.",
             themeColor = ColorCommon
         };
+        items["Bear_Panda"] = new CollectionItem
+        {
+            id = "Bear_Panda",
+            displayName = "Urso Panda Zen",
+            rarity = PrizeRarity.Uncommon,
+            lore = "Tranquilo e comilão de bambu. Seu corpinho fofo em preto e branco rola fácil pela pilha de prêmios.",
+            themeColor = ColorUncommon
+        };
+        items["Bear_Polar"] = new CollectionItem
+        {
+            id = "Bear_Polar",
+            displayName = "Urso Polar Glacial",
+            rarity = PrizeRarity.Uncommon,
+            lore = "Firme e imponente, resiste a qualquer tranco com sua pelagem aveludada do Círculo Polar.",
+            themeColor = ColorUncommon
+        };
+        items["Bear_Galaxy"] = new CollectionItem
+        {
+            id = "Bear_Galaxy",
+            displayName = "Urso Cósmico Galaxy",
+            rarity = PrizeRarity.Legendary,
+            lore = "Forjado nas nebulosas do espaço profundo! Seu corpo translúcido brilha com constelações estelares vivas.",
+            themeColor = ColorLegendary
+        };
 
+        // --- FAMÍLIA PEIXE BALÃO ---
         items["BalloonFish"] = new CollectionItem
         {
             id = "BalloonFish",
@@ -116,7 +168,24 @@ public sealed class CollectionManager : MonoBehaviour
             lore = "Redondinho e rechonchudo, rola pelas curvas do monte. Seu formato de esfera facilita o encaixe nas pinças.",
             themeColor = ColorCommon
         };
+        items["Fish_Clown"] = new CollectionItem
+        {
+            id = "Fish_Clown",
+            displayName = "Peixe Palhaço",
+            rarity = PrizeRarity.Common,
+            lore = "Direto dos recifes de corais tropicais! Suas listras marcantes trazem sorte aos novos jogadores.",
+            themeColor = ColorCommon
+        };
+        items["Fish_Gold"] = new CollectionItem
+        {
+            id = "Fish_Gold",
+            displayName = "Peixinho Dourado",
+            rarity = PrizeRarity.Rare,
+            lore = "Lenda dos fliperamas orientais: capturar este peixe banhado a ouro 24k concede prosperidade e fichas!",
+            themeColor = ColorRare
+        };
 
+        // --- FAMÍLIA COALA ---
         items["Koala"] = new CollectionItem
         {
             id = "Koala",
@@ -125,7 +194,24 @@ public sealed class CollectionManager : MonoBehaviour
             lore = "Dorme abraçado aos vizinhos. Possui pegada firme e exige um centro de massa certeiro para ser erguido!",
             themeColor = ColorUncommon
         };
+        items["Koala_Eucalyptus"] = new CollectionItem
+        {
+            id = "Koala_Eucalyptus",
+            displayName = "Coala Eucalipto",
+            rarity = PrizeRarity.Uncommon,
+            lore = "Camuflado entre os galhos e folhas perfumadas. Sempre relaxado, mesmo suspenso no ar.",
+            themeColor = ColorUncommon
+        };
+        items["Koala_King"] = new CollectionItem
+        {
+            id = "Koala_King",
+            displayName = "Coala Real Supremo",
+            rarity = PrizeRarity.Legendary,
+            lore = "O soberano supremo dos coalas! Ostenta uma aura radiante e comanda a corte de pelúcias da vitrine.",
+            themeColor = ColorLegendary
+        };
 
+        // --- FAMÍLIA TEXUGO ---
         items["Badger"] = new CollectionItem
         {
             id = "Badger",
@@ -134,14 +220,39 @@ public sealed class CollectionManager : MonoBehaviour
             lore = "Pequeno mas com grande atitude! Suas listras marcantes chamam atenção de qualquer colecionador experiente.",
             themeColor = ColorUncommon
         };
+        items["Badger_Honey"] = new CollectionItem
+        {
+            id = "Badger_Honey",
+            displayName = "Texugo do Mel",
+            rarity = PrizeRarity.Rare,
+            lore = "O animal mais destemido da savana! Com pelagem cor de mel dourado, desafia as garras mais apertadas.",
+            themeColor = ColorRare
+        };
 
+        // --- FAMÍLIA PORQUINHO ---
+        items["Porky_Classic"] = new CollectionItem
+        {
+            id = "Porky_Classic",
+            displayName = "Porquinho Chiclete",
+            rarity = PrizeRarity.Common,
+            lore = "Fofinho, macio e rosa chiclete! A companhia perfeita para qualquer fã de doces e arcades.",
+            themeColor = ColorCommon
+        };
         items["Porky"] = new CollectionItem
         {
             id = "Porky",
             displayName = "Porky, o Magnata",
             rarity = PrizeRarity.Rare,
-            lore = "O lendário porquinho listrado de ouro! O prêmio mais cobiçado de toda a máquina. Quem o captura é um verdadeiro Mestre da Garra.",
+            lore = "O lendário porquinho listrado de ouro! O prêmio clássico mais cobiçado de toda a máquina.",
             themeColor = ColorRare
+        };
+        items["Porky_Diamond"] = new CollectionItem
+        {
+            id = "Porky_Diamond",
+            displayName = "Porky Diamante Cristal",
+            rarity = PrizeRarity.Legendary,
+            lore = "Lapidado em cristal puro com reflexos prismáticos! A joia suprema do GarraMania. Uma captura para a história.",
+            themeColor = ColorLegendary
         };
     }
 
@@ -214,7 +325,24 @@ public sealed class CollectionManager : MonoBehaviour
     public string NormalizeStockId(string raw)
     {
         if (string.IsNullOrEmpty(raw)) return "Fox";
+        if (items.ContainsKey(raw)) return raw;
+
         string lower = raw.ToLowerInvariant();
+        // Variantes específicas primeiro
+        if (lower.Contains("fox_arctic")) return "Fox_Arctic";
+        if (lower.Contains("fox_shadow")) return "Fox_Shadow";
+        if (lower.Contains("bear_panda")) return "Bear_Panda";
+        if (lower.Contains("bear_polar")) return "Bear_Polar";
+        if (lower.Contains("bear_galaxy")) return "Bear_Galaxy";
+        if (lower.Contains("fish_clown")) return "Fish_Clown";
+        if (lower.Contains("fish_gold")) return "Fish_Gold";
+        if (lower.Contains("koala_eucalyptus")) return "Koala_Eucalyptus";
+        if (lower.Contains("koala_king")) return "Koala_King";
+        if (lower.Contains("badger_honey")) return "Badger_Honey";
+        if (lower.Contains("porky_classic") || lower.Contains("porky_pink")) return "Porky_Classic";
+        if (lower.Contains("porky_diamond")) return "Porky_Diamond";
+
+        // Bases padrão
         if (lower.Contains("fox") || lower.Contains("raposa")) return "Fox";
         if (lower.Contains("green") || lower.Contains("menta") || lower.Contains("bear")) return "GreenBear";
         if (lower.Contains("balloon") || lower.Contains("fish") || lower.Contains("peixe")) return "BalloonFish";

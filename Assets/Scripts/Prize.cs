@@ -95,6 +95,9 @@ public class Prize : MonoBehaviour
         Rarity = rarity;
         BaseCaptureChance = Mathf.Clamp(captureChance, 0.05f, 1f);
 
+        // Aplica material/skin procedural da variante colecionável
+        PrizeVariantApplier.ApplyVariantStyle(gameObject, StockId, rarity);
+
         // Ajusta dificuldade física calibrada por raridade
         switch (rarity)
         {
