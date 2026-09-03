@@ -16,8 +16,21 @@ public class ClawCameraController : MonoBehaviour
 {
     public static ClawCameraController Instance { get; private set; }
 
-    public enum CameraViewAngle { Front, Right, Left }
+    public enum CameraViewAngle { Front, Diagonal, TopDown }
     public CameraViewAngle CurrentAngle { get; private set; } = CameraViewAngle.Front;
+
+    public string CurrentAngleDisplayName
+    {
+        get
+        {
+            switch (CurrentAngle)
+            {
+                case CameraViewAngle.Diagonal: return "DIAGONAL";
+                case CameraViewAngle.TopDown: return "SUPERIOR";
+                default: return "FRENTE";
+            }
+        }
+    }
 
     [Header("Eventos")]
     public UnityEvent<CameraViewAngle> OnCameraAngleChanged = new UnityEvent<CameraViewAngle>();
@@ -25,14 +38,16 @@ public class ClawCameraController : MonoBehaviour
     [Header("Alvo")]
     public Transform clawTarget;
 
-    [Header("Posições em 1ª Pessoa (Frente ao Vidro)")]
-    // Posição de pé na frente do vidro do gabinete (Z = -3.45m, Y = 0.25m, Pitch = 11°)
-    public Vector3 frontPosition = new Vector3(0f, 0.95f, -3.65f);
-    public Vector3 frontEuler = new Vector3(15f, 0f, 0f);
-    public Vector3 rightPosition = new Vector3(3.65f, 0.95f, 0f);
-    public Vector3 rightEuler = new Vector3(15f, -90f, 0f);
-    public Vector3 leftPosition = new Vector3(-3.65f, 0.95f, 0f);
-    public Vector3 leftEuler = new Vector3(15f, 90f, 0f);
+    [Header("Posições em 1ª Pessoa Focadas na Frontal")]
+    // 1. Frontal Padrão: Centralizada no vidro, garra e monte
+    public Vector3 frontPosition = new Vector3(0f, 0.70f, -4.80f);
+    public Vector3 frontEuler = new Vector3(7f, 0f, 0f);
+    // 2. Diagonal Frontal 3/4: Deslocada para o canto frontal direito para verificar profundidade (Z)
+    public Vector3 diagonalPosition = new Vector3(1.50f, 1.10f, -4.40f);
+    public Vector3 diagonalEuler = new Vector3(12f, -18f, 0f);
+    // 3. Superior Frontal (Top-Down): Elevada e inclinada para ver o cesto de cima
+    public Vector3 topDownPosition = new Vector3(0f, 2.05f, -4.00f);
+    public Vector3 topDownEuler = new Vector3(27f, 0f, 0f);
 
     [Header("Follow Damping")]
     public float followWeightX = 0.12f;
@@ -40,8 +55,8 @@ public class ClawCameraController : MonoBehaviour
     public float followDamping = 5.0f;
 
     [Header("Dynamic Tension Zoom")]
-    public float defaultFOV = 52f;
-    public float tensionFOV = 44f;
+    public float defaultFOV = 62f;
+    public float tensionFOV = 50f;
     public float zoomSpeed = 3.5f;
 
     [Header("Sistema de Espiada Livre (First Person Lean)")]
@@ -56,8 +71,8 @@ public class ClawCameraController : MonoBehaviour
     public float maxShakeRotation = 3.5f;
 
     [Header("Direct Shake & FOV Punch")]
-    public float normalFOV = 52f;
-    public float punchFOV = 48f;
+    public float normalFOV = 62f;
+    public float punchFOV = 54f;
     private float directShakeIntensity = 0.08f;
     private float directShakeDuration = 0.15f;
     private float directShakeTimer = 0f;
@@ -89,16 +104,16 @@ public class ClawCameraController : MonoBehaviour
         cam = GetComponent<Camera>();
         if (cam == null) cam = Camera.main;
 
-        // Configura posição de primeira pessoa estilo Arcade Real
-        frontPosition = new Vector3(0f, 0.65f, -5.20f);
-        frontEuler = new Vector3(4.5f, 0f, 0f);
-        leftPosition = new Vector3(-5.20f, 0.65f, 0f);
-        leftEuler = new Vector3(4.5f, 90f, 0f);
-        rightPosition = new Vector3(5.20f, 0.65f, 0f);
-        rightEuler = new Vector3(4.5f, -90f, 0f);
-        defaultFOV = 62f;
-        tensionFOV = 50f;
-        normalFOV = 62f;
+        // Configura enquadramento frontal perfeito
+        frontPosition = new Vector3(0f, 0.70f, -4.80f);
+        frontEuler = new Vector3(7f, 0f, 0f);
+        diagonalPosition = new Vector3(1.50f, 1.10f, -4.40f);
+        diagonalEuler = new Vector3(12f, -18f, 0f);
+        topDownPosition = new Vector3(0f, 2.05f, -4.00f);
+        topDownEuler = new Vector3(27f, 0f, 0f);
+        defaultFOV = 64f;
+        tensionFOV = 52f;
+        normalFOV = 64f;
         punchFOV = 56f;
 
         if (cam != null)
@@ -161,12 +176,12 @@ public class ClawCameraController : MonoBehaviour
         switch (CurrentAngle)
         {
             case CameraViewAngle.Front:
-                SetCameraAngle(CameraViewAngle.Right);
+                SetCameraAngle(CameraViewAngle.Diagonal);
                 break;
-            case CameraViewAngle.Right:
-                SetCameraAngle(CameraViewAngle.Left);
+            case CameraViewAngle.Diagonal:
+                SetCameraAngle(CameraViewAngle.TopDown);
                 break;
-            case CameraViewAngle.Left:
+            case CameraViewAngle.TopDown:
                 SetCameraAngle(CameraViewAngle.Front);
                 break;
         }
@@ -200,6 +215,11 @@ public class ClawCameraController : MonoBehaviour
         directShakeDuration = Mathf.Max(0.01f, duration);
         directShakeTimer = directShakeDuration;
         AddTrauma(intensity * 1.8f);
+    }
+
+    public void ShakeCamera(float duration, float intensity)
+    {
+        Shake(intensity, duration);
     }
 
     /// <summary>
@@ -296,13 +316,13 @@ public class ClawCameraController : MonoBehaviour
                 basePos = frontPosition;
                 baseRot = frontEuler;
                 break;
-            case CameraViewAngle.Right:
-                basePos = rightPosition;
-                baseRot = rightEuler;
+            case CameraViewAngle.Diagonal:
+                basePos = diagonalPosition;
+                baseRot = diagonalEuler;
                 break;
-            case CameraViewAngle.Left:
-                basePos = leftPosition;
-                baseRot = leftEuler;
+            case CameraViewAngle.TopDown:
+                basePos = topDownPosition;
+                baseRot = topDownEuler;
                 break;
         }
 
@@ -310,14 +330,14 @@ public class ClawCameraController : MonoBehaviour
         Vector3 targetEuler = baseRot;
         float targetFOV = defaultFOV;
 
-        // Adaptação automática de enquadramento para tela vertical (Mobile Portrait)
+        // Adaptação suave de enquadramento para tela vertical (Mobile Portrait)
         float aspect = (float)Screen.width / Mathf.Max(1, Screen.height);
         if (aspect < 1.0f)
         {
             float portraitFactor = Mathf.Clamp01((1.0f - aspect) / 0.55f);
-            targetPos.z -= Mathf.Lerp(0f, 1.80f, portraitFactor);
-            targetPos.y += Mathf.Lerp(0f, 0.40f, portraitFactor);
-            targetFOV = Mathf.Lerp(defaultFOV, 82f, portraitFactor);
+            targetPos.z -= Mathf.Lerp(0f, 1.20f, portraitFactor);
+            targetPos.y += Mathf.Lerp(0f, 0.35f, portraitFactor);
+            targetFOV = Mathf.Lerp(defaultFOV, 76f, portraitFactor);
         }
 
         // 2. ESPIADA DE PRIMEIRA PESSOA (LEAN)
@@ -335,39 +355,17 @@ public class ClawCameraController : MonoBehaviour
         if (clawTarget != null)
         {
             float tDescida = Mathf.InverseLerp(2.5f, -1.0f, clawTarget.position.y);
-            targetFOV = Mathf.Lerp(defaultFOV, tensionFOV, tDescida);
+            targetFOV = Mathf.Lerp(targetFOV, tensionFOV, tDescida * 0.45f);
 
-            if (CurrentAngle == CameraViewAngle.Front)
-            {
-                targetPos.x += (clawTarget.position.x * followWeightX);
-                targetPos.z += (clawTarget.position.z * followWeightZ);
-                targetEuler.y += (clawTarget.position.x * 1.2f);
-                targetEuler.x -= (clawTarget.position.z * 0.8f);
+            // Acompanhamento sempre focado na frente da máquina
+            targetPos.x += (clawTarget.position.x * followWeightX);
+            targetPos.z += (clawTarget.position.z * followWeightZ);
+            targetEuler.y += (clawTarget.position.x * 1.0f);
+            targetEuler.x -= (clawTarget.position.z * 0.7f);
 
-                // Quando a garra desce, o jogador se inclina sutilmente em direção ao vidro
-                targetPos.y += Mathf.Lerp(0f, -0.15f, tDescida);
-                targetPos.z += Mathf.Lerp(0f, 0.40f, tDescida);
-            }
-            else if (CurrentAngle == CameraViewAngle.Left)
-            {
-                targetPos.z += (clawTarget.position.z * followWeightX);
-                targetPos.x += (clawTarget.position.x * followWeightZ);
-                targetEuler.y -= (clawTarget.position.z * 1.2f);
-                targetEuler.x -= (clawTarget.position.x * 0.8f);
-
-                targetPos.y += Mathf.Lerp(0f, -0.15f, tDescida);
-                targetPos.x += Mathf.Lerp(0f, 0.40f, tDescida);
-            }
-            else if (CurrentAngle == CameraViewAngle.Right)
-            {
-                targetPos.z -= (clawTarget.position.z * followWeightX);
-                targetPos.x -= (clawTarget.position.x * followWeightZ);
-                targetEuler.y += (clawTarget.position.z * 1.2f);
-                targetEuler.x += (clawTarget.position.x * 0.8f);
-
-                targetPos.y += Mathf.Lerp(0f, -0.15f, tDescida);
-                targetPos.x += Mathf.Lerp(0f, -0.40f, tDescida);
-            }
+            // Quando a garra desce, o jogador se inclina sutilmente em direção ao vidro
+            targetPos.y += Mathf.Lerp(0f, -0.10f, tDescida);
+            targetPos.z += Mathf.Lerp(0f, 0.35f, tDescida);
         }
 
         // 4. SUAVIZAÇÃO E DAMPING

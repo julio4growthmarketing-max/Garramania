@@ -121,6 +121,11 @@ public class Prize : MonoBehaviour
         }
 
         if (Body != null) Body.mass = massFeel;
+
+        if (Rarity == PrizeRarity.Rare || Rarity == PrizeRarity.Legendary)
+        {
+            SetupRarityGlow(Rarity);
+        }
     }
 
     /// <summary>
@@ -161,23 +166,23 @@ public class Prize : MonoBehaviour
             transform.localScale = Vector3.one;
         }
 
-        // Configuração posicional e angular por GrabKind (visualmente autêntico de fliperama)
+        // Configuração posicional e angular por GrabKind (aninhado firmemente dentro das pinças)
         if (kind == GrabKind.FirmBasket)
         {
-            transform.localPosition = new Vector3(0f, -0.06f, 0f);
+            transform.localPosition = new Vector3(0f, -0.02f, 0f);
             transform.localRotation = relativeRot;
         }
         else if (kind == GrabKind.SidePinch)
         {
-            // Pega de lado: pelúcia fica levemente inclinada e deslocada para um lado da garra
-            transform.localPosition = new Vector3(0.06f, -0.12f, 0.04f);
-            transform.localRotation = relativeRot * Quaternion.Euler(12f, 0f, 18f);
+            // Pega de lado: pelúcia levemente inclinada dentro do arco das pinças laterais
+            transform.localPosition = new Vector3(0.04f, -0.04f, 0.02f);
+            transform.localRotation = relativeRot * Quaternion.Euler(10f, 0f, 14f);
         }
         else // LimbTip
         {
-            // Pega pela ponta/membro: pendurada bem abaixo com inclinação acentuada
-            transform.localPosition = new Vector3(0.12f, -0.22f, 0.06f);
-            transform.localRotation = relativeRot * Quaternion.Euler(32f, 12f, 22f);
+            // Pega pela extremidade: segura logo abaixo do colar central, dentro do alcance das garras
+            transform.localPosition = new Vector3(0.06f, -0.07f, 0.03f);
+            transform.localRotation = relativeRot * Quaternion.Euler(18f, 8f, 16f);
         }
     }
 
@@ -356,5 +361,46 @@ public class Prize : MonoBehaviour
         effectiveRequired += (swayPenalty * 0.12f * kindMultiplier) + (movementPenalty * 0.08f * kindMultiplier);
 
         return currentGrip >= effectiveRequired;
+    }
+
+    private void SetupRarityGlow(PrizeRarity rarity)
+    {
+        Transform existing = transform.Find("RarityGlow");
+        if (existing != null) return;
+
+        GameObject glowObj = new GameObject("RarityGlow");
+        glowObj.transform.SetParent(transform, false);
+        glowObj.transform.localPosition = new Vector3(0f, 0.15f, 0f);
+
+        Light glowLight = glowObj.AddComponent<Light>();
+        glowLight.type = LightType.Point;
+        glowLight.range = 0.85f;
+        glowLight.intensity = rarity == PrizeRarity.Legendary ? 1.8f : 1.2f;
+        glowLight.color = rarity == PrizeRarity.Legendary 
+            ? new Color(1f, 0.85f, 0.2f) // Dourado radiante
+            : new Color(0.95f, 0.25f, 0.85f); // Magenta/Roxo neon
+
+        glowObj.AddComponent<RarityGlowPulse>();
+    }
+}
+
+/// <summary>
+/// Pulsação sutil na intensidade da luz para pelúcias raras chamarem a atenção na vitrine.
+/// </summary>
+public class RarityGlowPulse : MonoBehaviour
+{
+    private Light lt;
+    private float baseIntensity;
+
+    void Start()
+    {
+        lt = GetComponent<Light>();
+        if (lt != null) baseIntensity = lt.intensity;
+    }
+
+    void Update()
+    {
+        if (lt == null) return;
+        lt.intensity = baseIntensity + Mathf.Sin(Time.time * 3.5f) * 0.35f;
     }
 }

@@ -61,6 +61,14 @@ public class UIManager : MonoBehaviour
 
     void Start()
     {
+        // Se o ProfessionalUIController já estiver ativo na cena, evita duplicar o Canvas e gerar sobreposição de botões
+        if (FindFirstObjectByType<ProfessionalUIController>() != null)
+        {
+            Debug.Log("[UIManager] ProfessionalUIController detectado. Desativando UIManager legado para evitar duplicidade de Canvas.");
+            enabled = false;
+            return;
+        }
+
         ConstruirUI();
         ConectarGameSession();
     }
@@ -326,11 +334,11 @@ public class UIManager : MonoBehaviour
             case ClawCameraController.CameraViewAngle.Front:
                 txtBtnCam.text = "CÂMERA: FRENTE";
                 break;
-            case ClawCameraController.CameraViewAngle.Right:
-                txtBtnCam.text = "CÂMERA: DIREITA";
+            case ClawCameraController.CameraViewAngle.Diagonal:
+                txtBtnCam.text = "CÂMERA: DIAGONAL";
                 break;
-            case ClawCameraController.CameraViewAngle.Left:
-                txtBtnCam.text = "CÂMERA: ESQUERDA";
+            case ClawCameraController.CameraViewAngle.TopDown:
+                txtBtnCam.text = "CÂMERA: SUPERIOR";
                 break;
         }
     }

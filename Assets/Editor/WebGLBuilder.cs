@@ -12,6 +12,8 @@ public static class WebGLBuilder
         Debug.Log("[GarraMania] Scripts e Assets recarregados com sucesso!");
     }
 
+    public static void Build() => BuildWebGLMobile();
+
     [MenuItem("GarraMania/Gerar Build WebGL Mobile")]
     public static void BuildWebGLMobile()
     {

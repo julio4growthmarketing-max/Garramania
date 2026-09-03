@@ -223,14 +223,15 @@ public class ClawController : MonoBehaviour
         Prize prizeToTrack = currentHeldPrize != null ? currentHeldPrize : (premioAgarrado != null ? premioAgarrado.GetComponent<Prize>() : null);
         if (prizeToTrack == null || (prizeToTrack.State != PrizeState.Attached && prizeToTrack.State != PrizeState.Slipping)) return;
         
-        // APENAS FirmBasket usa fixação rígida no carrySocket. SidePinch e LimbTip usam física pura e joints!
-        if (prizeToTrack.CurrentGrabKind == GrabKind.FirmBasket)
+        Transform anchor = carrySocket != null ? carrySocket : clawVisualContainer;
+        if (anchor != null)
         {
-            Transform anchor = carrySocket != null ? carrySocket : clawVisualContainer;
-            if (anchor != null)
-            {
-                prizeToTrack.transform.position = anchor.position + new Vector3(0f, -0.05f, 0f);
-            }
+            if (prizeToTrack.CurrentGrabKind == GrabKind.FirmBasket)
+                prizeToTrack.transform.position = anchor.position + new Vector3(0f, -0.02f, 0f);
+            else if (prizeToTrack.CurrentGrabKind == GrabKind.SidePinch)
+                prizeToTrack.transform.position = anchor.position + new Vector3(0.04f, -0.04f, 0.02f);
+            else if (prizeToTrack.CurrentGrabKind == GrabKind.LimbTip)
+                prizeToTrack.transform.position = anchor.position + new Vector3(0.06f, -0.07f, 0.03f);
         }
     }
 
@@ -321,6 +322,13 @@ public class ClawController : MonoBehaviour
 
         // 2. FASE DE FECHAMENTO (Pulso elétrico solenoide nos dentes)
         FecharGarraFisica();
+        if (currentHeldPrize != null || premioAgarrado != null)
+        {
+            // JUICE: Tremor de impacto + Punch FOV e som mecânico de engrenagem travando
+            ClawCameraController.Instance?.ShakeCamera(0.22f, 0.08f);
+            ClawCameraController.Instance?.PunchFOV(0.7f);
+            AudioManager.Instance?.TocarSom("ClawGrab");
+        }
         yield return new WaitForSeconds(0.45f);
 
         // 3. FASE DE ELEVAÇÃO (Z) COM JERKS E REDUÇÃO PWM
@@ -356,8 +364,10 @@ public class ClawController : MonoBehaviour
             yield return null;
         }
 
-        // TRANCO DE TOPO: Aceleração inercial brusca ao atingir o batente superior
+        // TRANCO DE TOPO: Aceleração inercial brusca ao atingir o batente superior (CLUNK mecânico!)
         ApplyTopJerkInertia();
+        ClawCameraController.Instance?.ShakeCamera(0.18f, 0.06f);
+        AudioManager.Instance?.TocarSom("Clonk");
         yield return new WaitForSeconds(0.25f);
 
         // 4. FASE DE VIAGEM ATÉ A CALHA DE PRÊMIOS (-1.75, LIM_YMAX, -1.75)
@@ -376,11 +386,31 @@ public class ClawController : MonoBehaviour
 
         yield return new WaitForSeconds(0.35f);
 
-        // 5. FASE DE ENTREGA FÍSICA
+        // 5. FASE DE ENTREGA FÍSICA (SLOW-MOTION DRAMÁTICO NA QUEDA)
         bool haviaPremio = currentHeldPrize != null || premioAgarrado != null;
-        if (haviaPremio) GameSession.Instance?.SetState(GameState.Delivering);
+        if (haviaPremio)
+        {
+            GameSession.Instance?.SetState(GameState.Delivering);
+            // Suspense máximo: tempo desacelera para 0.38x durante a queda na calha
+            Time.timeScale = 0.38f;
+            Time.fixedDeltaTime = 0.02f * Time.timeScale;
+            ClawCameraController.Instance?.ShakeCamera(0.25f, 0.05f);
+            AudioManager.Instance?.TocarSom("ClawGrab");
+        }
+
         AbrirGarraFisica();
-        yield return new WaitForSeconds(1.25f);
+
+        if (haviaPremio)
+        {
+            yield return new WaitForSecondsRealtime(0.90f);
+            Time.timeScale = 1.0f;
+            Time.fixedDeltaTime = 0.02f;
+            yield return new WaitForSeconds(0.35f);
+        }
+        else
+        {
+            yield return new WaitForSeconds(1.0f);
+        }
 
         // 6. RETORNO DA GARRA AO CENTRO DA VITRINE
         Vector3 posCentro = new Vector3(0f, LIM_YMAX, 0f);
@@ -573,19 +603,12 @@ public class ClawController : MonoBehaviour
         int detectMask = prizeLayer.value;
         if (detectMask == 0) detectMask = pLayer != -1 ? (1 << pLayer) : ~0;
 
-        // === WEBGL MOBILE FIX: Raio de detecção maior (0.60 → 0.75) ===
-        // Em FPS baixo a garra pode ter "pulado" ligeiramente além da posição ideal.
-        // Raio maior compensa esse erro de posicionamento.
-        Collider[] hits = Physics.OverlapSphere(prongTipsPos, 0.75f, detectMask);
+        // === FÍSICA REAL ARCADE: Raio calibrado ao envelope físico das 3 lâminas ===
+        // O diâmetro real das pinças abertas é ~0.50m (raio 0.25m). Raio 0.38m permite compensar
+        // pequenas variações de frame sem capturar bonecos distantes por telecinese.
+        Collider[] hits = Physics.OverlapSphere(prongTipsPos, 0.38f, detectMask);
         
-        // Fallback: se não encontrou nada, tenta com raio ainda maior centrado na garra
-        if (hits.Length == 0)
-        {
-            hits = Physics.OverlapSphere(clawPos + Vector3.down * 0.50f, 0.90f, detectMask);
-            Debug.Log($"[ClawCapture] Fallback: usando raio expandido, hits={hits.Length}");
-        }
-        
-        Debug.Log($"[ClawCapture] Detecção: clawY={clawPos.y:F3}, tipsY={prongTipsPos.y:F3}, mask={detectMask}, hits={hits.Length}");
+        Debug.Log($"[ClawCapture] Detecção Física: clawY={clawPos.y:F3}, tipsY={prongTipsPos.y:F3}, mask={detectMask}, hits={hits.Length}");
         HashSet<Prize> evaluated = new HashSet<Prize>();
 
         foreach (var col in hits)
@@ -602,10 +625,10 @@ public class ClawController : MonoBehaviour
             );
             float vertDist = Mathf.Abs(prongTipsPos.y - prizeCoM.y);
 
-            // === WEBGL MOBILE FIX: Cutoffs relaxados (0.50→0.55 horiz, 0.75→0.85 vert) ===
-            if (horizDist > 0.55f || vertDist > 0.85f) continue;
+            // Se o centro do boneco estiver fora da abertura das pinças, NUNCA agarra no ar
+            if (horizDist > 0.34f || vertDist > 0.45f) continue;
 
-            Debug.Log($"[ClawCapture] Candidato: {prize.prizeId} | hDist={horizDist:F3} vDist={vertDist:F3}");
+            Debug.Log($"[ClawCapture] Candidato em alcance real: {prize.prizeId} | hDist={horizDist:F3} vDist={vertDist:F3}");
 
             GrabKind kind = GrabKind.None;
             float score = 0f;
@@ -615,24 +638,23 @@ public class ClawController : MonoBehaviour
                 kind = GrabKind.FirmBasket;
                 score = 1.0f;
             }
-            // === GRAB KINDS: thresholds levemente relaxados para compensar FPS baixo ===
-            // FirmBasket: boneco centralizado entre as pinças
-            else if (horizDist <= 0.32f && vertDist <= 0.70f)
+            // FirmBasket: boneco centralizado entre as 3 pinças
+            else if (horizDist <= 0.20f && vertDist <= 0.35f)
             {
                 kind = GrabKind.FirmBasket;
-                score = Mathf.Lerp(0.87f, 0.98f, 1f - (horizDist / 0.32f));
+                score = Mathf.Lerp(0.88f, 0.98f, 1f - (horizDist / 0.20f));
             }
-            // SidePinch: boneco pego de lado, pinças apertam as laterais
-            else if (horizDist <= 0.44f && vertDist <= 0.75f)
+            // SidePinch: pinças fecham apertando as laterais do boneco
+            else if (horizDist <= 0.28f && vertDist <= 0.40f)
             {
                 kind = GrabKind.SidePinch;
-                score = Mathf.Lerp(0.55f, 0.75f, 1f - ((horizDist - 0.32f) / 0.12f));
+                score = Mathf.Lerp(0.55f, 0.78f, 1f - ((horizDist - 0.20f) / 0.08f));
             }
-            // LimbTip: ponta da pinça pega uma extremidade (braço, perna)
-            else if (horizDist <= 0.52f && vertDist <= 0.80f)
+            // LimbTip: ponta da pinça engata em extremidade (braço/orelha)
+            else if (horizDist <= 0.34f && vertDist <= 0.45f)
             {
                 kind = GrabKind.LimbTip;
-                score = Mathf.Lerp(0.30f, 0.45f, 1f - ((horizDist - 0.44f) / 0.08f));
+                score = Mathf.Lerp(0.30f, 0.50f, 1f - ((horizDist - 0.28f) / 0.06f));
             }
 
             if (score > best.score)
