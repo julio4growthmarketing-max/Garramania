@@ -327,7 +327,7 @@ public class ClawController : MonoBehaviour
             // JUICE: Tremor de impacto + Punch FOV e som mecânico de engrenagem travando
             ClawCameraController.Instance?.ShakeCamera(0.22f, 0.08f);
             ClawCameraController.Instance?.PunchFOV(0.7f);
-            AudioManager.Instance?.TocarSom("ClawGrab");
+            AudioFeedbackController.Instance?.PlayGrabSuccess();
         }
         yield return new WaitForSeconds(0.45f);
 
@@ -367,7 +367,7 @@ public class ClawController : MonoBehaviour
         // TRANCO DE TOPO: Aceleração inercial brusca ao atingir o batente superior (CLUNK mecânico!)
         ApplyTopJerkInertia();
         ClawCameraController.Instance?.ShakeCamera(0.18f, 0.06f);
-        AudioManager.Instance?.TocarSom("Clonk");
+        AudioFeedbackController.Instance?.PlayClank();
         yield return new WaitForSeconds(0.25f);
 
         // 4. FASE DE VIAGEM ATÉ A CALHA DE PRÊMIOS (-1.75, LIM_YMAX, -1.75)
@@ -395,7 +395,7 @@ public class ClawController : MonoBehaviour
             Time.timeScale = 0.38f;
             Time.fixedDeltaTime = 0.02f * Time.timeScale;
             ClawCameraController.Instance?.ShakeCamera(0.25f, 0.05f);
-            AudioManager.Instance?.TocarSom("ClawGrab");
+            AudioFeedbackController.Instance?.PlaySolenoidRelease();
         }
 
         AbrirGarraFisica();
