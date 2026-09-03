@@ -261,7 +261,7 @@ public sealed class ProfessionalUIController : MonoBehaviour
         else if (playing)
         {
             if (menuPanel != null) menuPanel.SetActive(false);
-            if (resultPanel != null) resultPanel.SetActive(false);
+            if (resultPanel != null && !resultPanel.activeSelf) resultPanel.SetActive(false);
             if (gameOverPanel != null) gameOverPanel.SetActive(false);
             if (hudPanel != null) hudPanel.SetActive(true);
             if (controlsPanel != null) controlsPanel.SetActive(true);
@@ -699,8 +699,11 @@ public sealed class ProfessionalUIController : MonoBehaviour
         // BOTÃO SOCIAL VIRAL: Compartilhar no WhatsApp
         CreateArcadeButton(sheet.transform, "ShareBtn", new Vector2(0.06f, 0.18f), new Vector2(0.94f, 0.31f), Button3DTheme.Emerald, ShareVictoryOnWhatsApp, "COMPARTILHAR NO WHATSAPP 💬", 24);
 
-        // BOTÃO CONTINUAR JOGANDO
-        CreateArcadeButton(sheet.transform, "ContinueBtn", new Vector2(0.06f, 0.03f), new Vector2(0.94f, 0.16f), Button3DTheme.PurplePink, ContinueAfterResult, "CONTINUAR JOGANDO ▶", 28);
+        // BOTÃO JOGAR NOVAMENTE / CONTINUAR
+        CreateArcadeButton(sheet.transform, "ContinueBtn", new Vector2(0.06f, 0.03f), new Vector2(0.94f, 0.16f), Button3DTheme.PurplePink, ContinueAfterResult, "JOGAR NOVAMENTE 🕹️", 28);
+
+        // BOTÃO FECHAR '✕' NO CANTO SUPERIOR DIREITO
+        CreateArcadeButton(sheet.transform, "CloseCornerBtn", new Vector2(0.86f, 0.86f), new Vector2(0.97f, 0.97f), Button3DTheme.WhiteGhost, ContinueAfterResult, "✕", 22);
 
         parent.gameObject.SetActive(false);
     }

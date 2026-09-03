@@ -429,11 +429,18 @@ public class ClawController : MonoBehaviour
         CabinetLightingController.Instance?.SetDramaticFocus(false);
         if (GameSession.Instance != null && GameSession.Instance.CurrentState != GameState.GameOver)
         {
-            GameSession.Instance.SetState(GameState.Playing);
+            // Se houve captura, a tela de vitória permanece aberta até o jogador fechar
+            if (!haviaPremio)
+            {
+                GameSession.Instance.SetState(GameState.Playing);
+            }
         }
         if (InputRouter.Instance != null && (GameSession.Instance == null || GameSession.Instance.CurrentState == GameState.Playing))
         {
-            InputRouter.Instance.SetBlocked(false);
+            if (!haviaPremio)
+            {
+                InputRouter.Instance.SetBlocked(false);
+            }
         }
         OnClawStateChanged?.Invoke(false);
     }
