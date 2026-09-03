@@ -167,6 +167,12 @@ public sealed class CabinetThemeManager : MonoBehaviour
 
     private void EnsureNeonWallpaperPoster(Transform root, CabinetThemeData theme)
     {
+        // Limpa molduras antigas se existirem
+        Transform trimT = root.Find("Moldura_Poster_Neon_Top") ?? root.Find("04_Paredes_Vidros/Moldura_Poster_Neon_Top");
+        if (trimT != null) Destroy(trimT.gameObject);
+        Transform trimB = root.Find("Moldura_Poster_Neon_Bot") ?? root.Find("04_Paredes_Vidros/Moldura_Poster_Neon_Bot");
+        if (trimB != null) Destroy(trimB.gameObject);
+
         Transform poster = root.Find("Poster_Neon_Garramania");
         if (poster == null)
         {
@@ -174,70 +180,68 @@ public sealed class CabinetThemeManager : MonoBehaviour
             if (paredes != null) poster = paredes.Find("Poster_Neon_Garramania");
         }
 
+        // Se o poster existente for um Cubo antigo, remove para reconstruir com o Quad perfeito
+        if (poster != null)
+        {
+            MeshFilter mf = poster.GetComponent<MeshFilter>();
+            if (mf != null && mf.sharedMesh != null && mf.sharedMesh.name.Contains("Cube"))
+            {
+                Destroy(poster.gameObject);
+                poster = null;
+            }
+        }
+
+        string texPath = !string.IsNullOrEmpty(theme.wallpaperResourcePath) ? theme.wallpaperResourcePath : "Textures/Wallpaper_CyberNeon";
+        Texture2D tex = Resources.Load<Texture2D>(texPath) ?? Resources.Load<Texture2D>("Textures/Wallpaper_CyberNeon");
+
         if (poster == null)
         {
-            GameObject pObj = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            GameObject pObj = GameObject.CreatePrimitive(PrimitiveType.Quad);
             pObj.name = "Poster_Neon_Garramania";
             pObj.transform.SetParent(root, false);
-            pObj.transform.position = new Vector3(0, 1.25f, 2.52f);
-            pObj.transform.localScale = new Vector3(3.8f, 1.9f, 0.02f);
+            pObj.transform.position = new Vector3(0, 0.5f, 2.54f);
+            pObj.transform.localScale = new Vector3(5.0f, 5.0f, 1.0f);
             pObj.transform.rotation = Quaternion.identity;
             Destroy(pObj.GetComponent<Collider>());
 
             Material m = new Material(Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard"));
-            Texture2D tex = Resources.Load<Texture2D>("Textures/MarqueeBanner");
             if (tex != null)
             {
                 m.mainTexture = tex;
-                m.mainTextureScale = new Vector2(1, -1);
-                m.mainTextureOffset = new Vector2(0, 1);
+                m.mainTextureScale = Vector2.one;
+                m.mainTextureOffset = Vector2.zero;
                 m.EnableKeyword("_EMISSION");
                 m.SetTexture("_EmissionMap", tex);
                 if (m.HasProperty("_EmissionMap"))
                 {
-                    m.SetTextureScale("_EmissionMap", new Vector2(1, -1));
-                    m.SetTextureOffset("_EmissionMap", new Vector2(0, 1));
+                    m.SetTextureScale("_EmissionMap", Vector2.one);
+                    m.SetTextureOffset("_EmissionMap", Vector2.zero);
                 }
-                m.SetColor("_EmissionColor", Color.white * 2.2f);
+                m.SetColor("_EmissionColor", Color.white * 1.6f);
             }
             pObj.GetComponent<MeshRenderer>().material = m;
             poster = pObj.transform;
-
-            GameObject trimTop = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            trimTop.name = "Moldura_Poster_Neon_Top";
-            trimTop.transform.SetParent(root, false);
-            trimTop.transform.position = new Vector3(0, 2.22f, 2.51f);
-            trimTop.transform.localScale = new Vector3(3.9f, 0.06f, 0.04f);
-            Destroy(trimTop.GetComponent<Collider>());
-
-            GameObject trimBot = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            trimBot.name = "Moldura_Poster_Neon_Bot";
-            trimBot.transform.SetParent(root, false);
-            trimBot.transform.position = new Vector3(0, 0.28f, 2.51f);
-            trimBot.transform.localScale = new Vector3(3.9f, 0.06f, 0.04f);
-            Destroy(trimBot.GetComponent<Collider>());
         }
-
-        if (poster != null)
+        else
         {
+            poster.position = new Vector3(0, 0.5f, 2.54f);
+            poster.localScale = new Vector3(5.0f, 5.0f, 1.0f);
+            poster.rotation = Quaternion.identity;
+
             Renderer r = poster.GetComponent<Renderer>();
-            if (r != null)
+            if (r != null && tex != null)
             {
-                Texture2D tex = Resources.Load<Texture2D>("Textures/MarqueeBanner");
-                if (tex != null)
+                r.material.mainTexture = tex;
+                r.material.mainTextureScale = Vector2.one;
+                r.material.mainTextureOffset = Vector2.zero;
+                r.material.EnableKeyword("_EMISSION");
+                r.material.SetTexture("_EmissionMap", tex);
+                if (r.material.HasProperty("_EmissionMap"))
                 {
-                    r.material.mainTexture = tex;
-                    r.material.mainTextureScale = new Vector2(1, -1);
-                    r.material.mainTextureOffset = new Vector2(0, 1);
-                    r.material.EnableKeyword("_EMISSION");
-                    r.material.SetTexture("_EmissionMap", tex);
-                    if (r.material.HasProperty("_EmissionMap"))
-                    {
-                        r.material.SetTextureScale("_EmissionMap", new Vector2(1, -1));
-                        r.material.SetTextureOffset("_EmissionMap", new Vector2(0, 1));
-                    }
-                    r.material.SetColor("_EmissionColor", Color.white * 2.2f);
+                    r.material.SetTextureScale("_EmissionMap", Vector2.one);
+                    r.material.SetTextureOffset("_EmissionMap", Vector2.zero);
                 }
+                r.material.SetColor("_EmissionColor", Color.white * 1.6f);
             }
         }
     }

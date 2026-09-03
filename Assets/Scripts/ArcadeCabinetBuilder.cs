@@ -183,11 +183,15 @@ public class ArcadeCabinetBuilder
         // Moldura do Mural
         Cubo("Moldura_Top_Fundo", new Vector3(0, 2.95f, 2.54f), new Vector3(5.1f, 0.12f, 0.06f), mAcoInox, rootParedes);
 
-        // Pôster Neon Retroiluminado GARRAMANIA (Wallpaper Oficial no Fundo do Vidro)
-        GameObject posterObj = Cubo("Poster_Neon_Garramania", new Vector3(0, 1.30f, 2.52f), new Vector3(3.6f, 1.8f, 0.02f), mMarquee, rootParedes);
+        // Wallpaper Neon Retroiluminado GARRAMANIA (Fundo Completo do Vidro)
+        GameObject posterObj = GameObject.CreatePrimitive(PrimitiveType.Quad);
+        posterObj.name = "Poster_Neon_Garramania";
+        posterObj.transform.SetParent(rootParedes, false);
+        posterObj.transform.position = new Vector3(0, 0.5f, 2.54f);
+        posterObj.transform.localScale = new Vector3(5.0f, 5.0f, 1.0f);
         posterObj.transform.rotation = Quaternion.identity;
-        Cubo("Moldura_Poster_Neon_Top", new Vector3(0, 2.22f, 2.51f), new Vector3(3.68f, 0.04f, 0.04f), mNeonCyan, rootParedes);
-        Cubo("Moldura_Poster_Neon_Bot", new Vector3(0, 0.38f, 2.51f), new Vector3(3.68f, 0.04f, 0.04f), mNeonMagenta, rootParedes);
+        Object.Destroy(posterObj.GetComponent<Collider>());
+        posterObj.GetComponent<MeshRenderer>().material = mMarquee;
 
         // Vidros Físicos PBR Transparentes (Reflexos nítidos da garra, pelúcias e neons)
         // Cubo("Vidro_Frontal", new Vector3(0, 0.5f, -2.55f), new Vector3(4.8f, 4.8f, 0.02f), mVidroGabinete, rootParedes); // Omitido na frente para visibilidade cristalina
