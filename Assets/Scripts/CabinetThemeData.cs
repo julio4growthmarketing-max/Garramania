@@ -31,8 +31,9 @@ public class CabinetThemeData
     // Texto do Letreiro Superior
     public string marqueeTitle;
 
-    // Prêmios prioritários nesta cabine
-    public List<string> featuredPrizeIds;
+    // Prêmios exclusivos desta cabine
+    public List<string> exclusivePrizeIds;
+    public List<string> featuredPrizeIds => exclusivePrizeIds;
 
     public static CabinetThemeData CreateCyberNeon()
     {
@@ -50,7 +51,7 @@ public class CabinetThemeData
             marqueeColor = new Color(1.80f, 1.40f, 0.30f),       // Dourado
             spotlightColor = new Color(0.90f, 0.95f, 1.00f),     // Luz branca pura
             marqueeTitle = "GARRAMANIA NEON",
-            featuredPrizeIds = new List<string> { "Fox_Classic", "Bear_Mint", "Fish_Balloon", "Badger_Brave", "Koala_Sleepy", "Porky_Classic" }
+            exclusivePrizeIds = new List<string> { "Fox", "GreenBear", "BalloonFish", "Koala", "Badger", "Porky" }
         };
     }
 
@@ -70,7 +71,7 @@ public class CabinetThemeData
             marqueeColor = new Color(2.20f, 0.80f, 1.50f),
             spotlightColor = new Color(1.00f, 0.92f, 0.95f),     // Luz quente rosada
             marqueeTitle = "SWEET CANDY CLAW",
-            featuredPrizeIds = new List<string> { "Bear_Panda", "Bear_Polar", "Fish_Clown", "Koala_Eucalyptus", "Fox_Arctic", "Porky_Classic" }
+            exclusivePrizeIds = new List<string> { "Fox_Arctic", "Bear_Polar", "Bear_Panda", "Koala_Eucalyptus", "Fish_Clown", "Porky_Classic" }
         };
     }
 
@@ -90,7 +91,7 @@ public class CabinetThemeData
             marqueeColor = new Color(2.50f, 2.00f, 0.30f),
             spotlightColor = new Color(1.00f, 0.88f, 0.50f),     // Luz de cassino dourada
             marqueeTitle = "VIP HIGH ROLLER",
-            featuredPrizeIds = new List<string> { "Porky_Tycoon", "Porky_Diamond", "Bear_Galaxy", "Koala_King", "Fish_Gold", "Fox_Shadow" }
+            exclusivePrizeIds = new List<string> { "Fish_Gold", "Badger_Honey", "Fox_Shadow", "Bear_Galaxy", "Koala_King", "Porky_Diamond" }
         };
     }
 }

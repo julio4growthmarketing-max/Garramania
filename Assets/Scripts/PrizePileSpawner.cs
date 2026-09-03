@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
@@ -43,65 +44,127 @@ public sealed class PrizePileSpawner : MonoBehaviour
         CreatePileFloor();
         stockManager.Initialize(pileRoot, TotalPrizes);
         stockManager.OnRefillRequested += ReplenishVisiblePrizes;
+
+        if (CabinetThemeManager.Instance != null)
+        {
+            CabinetThemeManager.Instance.OnThemeChanged.AddListener(RespawnThemePile);
+        }
+
         StartCoroutine(BuildInitialPileRoutine());
     }
 
     private void OnDestroy()
     {
         if (stockManager != null) stockManager.OnRefillRequested -= ReplenishVisiblePrizes;
+        if (CabinetThemeManager.Instance != null)
+        {
+            CabinetThemeManager.Instance.OnThemeChanged.RemoveListener(RespawnThemePile);
+        }
+    }
+
+    public void RespawnThemePile(CabinetThemeData theme)
+    {
+        if (pileRoot != null)
+        {
+            for (int i = pileRoot.childCount - 1; i >= 0; i--)
+            {
+                Destroy(pileRoot.GetChild(i).gameObject);
+            }
+        }
+
+        StopAllCoroutines();
+        pileReady = false;
+        StartCoroutine(BuildInitialPileRoutine());
     }
 
     private IEnumerator BuildInitialPileRoutine()
     {
-        string[] prefabs = { "Fox", "GreenBear", "BalloonFish", "Koala", "Badger", "Porky" };
-        PrizeRarity[] rarities = { 
-            PrizeRarity.Common, PrizeRarity.Common, PrizeRarity.Common,
-            PrizeRarity.Uncommon, PrizeRarity.Uncommon, PrizeRarity.Rare 
-        };
+        CabinetThemeData theme = CabinetThemeManager.Instance != null ? CabinetThemeManager.Instance.CurrentTheme : null;
+        List<string> themePrizes = theme != null && theme.exclusivePrizeIds != null && theme.exclusivePrizeIds.Count > 0
+            ? theme.exclusivePrizeIds
+            : new List<string> { "Fox", "GreenBear", "BalloonFish", "Koala", "Badger", "Porky" };
 
         for (int i = 0; i < TotalPrizes; i++)
         {
-            string name = prefabs[i % prefabs.Length];
-            PrizeRarity rarity = rarities[i % rarities.Length];
-            SpawnInitialPrize(name, rarity, i);
+            string variantId = themePrizes[i % themePrizes.Count];
+            SpawnThemedPrize(variantId, i);
             yield return null; // 1 frame entre spawns para acomodação suave
         }
 
         yield return new WaitForSeconds(0.3f);
         pileReady = true;
-        Debug.Log($"[PrizePileSpawner] Monte de pelúcias assentado com sucesso: {VisibleCount}/{TotalPrizes} unidades no solo.");
+        Debug.Log($"[PrizePileSpawner] Monte de pelúcias assentado para cabine '{theme?.displayName}': {VisibleCount}/{TotalPrizes} unidades.");
     }
 
-    private void SpawnInitialPrize(string resourceName, PrizeRarity rarity, int index)
+    private void SpawnThemedPrize(string variantId, int index)
     {
-        PrizeStockEntry definition = stockManager.ReserveDirect(resourceName, rarity);
-        GameObject prefab = Resources.Load<GameObject>("Prizes/" + resourceName);
-        if (definition == null || prefab == null)
+        string basePrefabName = GetBasePrefabName(variantId);
+        PrizeRarity rarity = GetVariantRarity(variantId);
+        GameObject prefab = Resources.Load<GameObject>("Prizes/" + basePrefabName);
+        if (prefab == null)
         {
-            Debug.LogWarning($"[PrizePileSpawner] Sem definição/prefab para {resourceName}; slot {index} ignorado.");
+            Debug.LogWarning($"[PrizePileSpawner] Prefab Prizes/{basePrefabName} não encontrado para variante {variantId}.");
             return;
+        }
+
+        PrizeStockEntry definition = stockManager.ReserveDirect(basePrefabName, rarity);
+        if (definition == null)
+        {
+            definition = new PrizeStockEntry
+            {
+                resourceName = basePrefabName,
+                rarity = rarity,
+                baseCaptureChance = rarity == PrizeRarity.Legendary ? 0.28f : rarity == PrizeRarity.Rare ? 0.38f : rarity == PrizeRarity.Uncommon ? 0.72f : 0.94f
+            };
         }
 
         try
         {
-            SpawnPrize(prefab, definition, index);
+            SpawnPrize(prefab, definition, variantId, rarity, index);
         }
         catch (Exception ex)
         {
-            Debug.LogError($"[PrizePileSpawner] Falha ao spawnar {resourceName} no slot {index}: {ex.Message}");
+            Debug.LogError($"[PrizePileSpawner] Falha ao spawnar {variantId} no slot {index}: {ex.Message}");
         }
+    }
+
+    private string GetBasePrefabName(string variantId)
+    {
+        string lower = variantId.ToLowerInvariant();
+        if (lower.Contains("fox")) return "Fox";
+        if (lower.Contains("bear")) return "GreenBear";
+        if (lower.Contains("fish")) return "BalloonFish";
+        if (lower.Contains("koala")) return "Koala";
+        if (lower.Contains("badger")) return "Badger";
+        if (lower.Contains("porky")) return "Porky";
+        return "Fox";
+    }
+
+    private PrizeRarity GetVariantRarity(string variantId)
+    {
+        var item = CollectionManager.Instance != null ? CollectionManager.Instance.GetItem(variantId) : null;
+        if (item != null) return item.rarity;
+        string lower = variantId.ToLowerInvariant();
+        if (lower.Contains("galaxy") || lower.Contains("king") || lower.Contains("diamond")) return PrizeRarity.Legendary;
+        if (lower.Contains("shadow") || lower.Contains("gold") || lower.Contains("honey") || lower.Contains("rare")) return PrizeRarity.Rare;
+        if (lower.Contains("arctic") || lower.Contains("polar") || lower.Contains("panda") || lower.Contains("eucalyptus")) return PrizeRarity.Uncommon;
+        return PrizeRarity.Common;
     }
 
     private void ReplenishVisiblePrizes()
     {
         if (!pileReady || stockManager == null) return;
+        CabinetThemeData theme = CabinetThemeManager.Instance != null ? CabinetThemeManager.Instance.CurrentTheme : null;
+        List<string> themePrizes = theme != null && theme.exclusivePrizeIds != null && theme.exclusivePrizeIds.Count > 0
+            ? theme.exclusivePrizeIds
+            : new List<string> { "Fox", "GreenBear", "BalloonFish", "Koala", "Badger", "Porky" };
+
         int missing = Mathf.Max(0, stockManager.TargetBoardCount - stockManager.ActiveCount);
         int batch = Mathf.Min(2, missing);
         for (int i = 0; i < batch; i++)
         {
-            PrizeStockEntry definition = stockManager.TakeNextDefinition(false);
-            if (definition == null || definition.prefab == null) continue;
-            SpawnPrize(definition.prefab, definition, VisibleCount + i);
+            string variantId = themePrizes[UnityEngine.Random.Range(0, themePrizes.Count)];
+            SpawnThemedPrize(variantId, VisibleCount + i);
         }
     }
 
@@ -147,12 +210,12 @@ public sealed class PrizePileSpawner : MonoBehaviour
         return Quaternion.Euler(pitch, yaw, roll);
     }
 
-    private void SpawnPrize(GameObject prefab, PrizeStockEntry definition, int index)
+    private void SpawnPrize(GameObject prefab, PrizeStockEntry definition, string variantId, PrizeRarity rarity, int index)
     {
         if (pileRoot == null || prefab == null || definition == null) return;
 
         // 1. Wrapper físico (onde operam Rigidbody e Collider)
-        GameObject wrapper = new GameObject($"Pelucia_{definition.resourceName}_{definition.rarity}_{index}");
+        GameObject wrapper = new GameObject($"Pelucia_{variantId}_{rarity}_{index}");
         wrapper.transform.SetParent(pileRoot, false);
         wrapper.transform.SetPositionAndRotation(CalculatePosition(index), CalculateRotation(index));
 
@@ -174,7 +237,7 @@ public sealed class PrizePileSpawner : MonoBehaviour
         // 4. Configura Rigidbody no wrapper
         Rigidbody body = wrapper.GetComponent<Rigidbody>();
         if (body == null) body = wrapper.AddComponent<Rigidbody>();
-        body.mass = definition.rarity == PrizeRarity.Rare ? 1.40f : definition.rarity == PrizeRarity.Uncommon ? 1.15f : 0.95f;
+        body.mass = rarity == PrizeRarity.Legendary ? 1.55f : rarity == PrizeRarity.Rare ? 1.40f : rarity == PrizeRarity.Uncommon ? 1.15f : 0.95f;
         body.linearDamping = 1.25f;
         body.angularDamping = 0.65f;
         body.collisionDetectionMode = CollisionDetectionMode.Continuous;
@@ -192,9 +255,9 @@ public sealed class PrizePileSpawner : MonoBehaviour
 
         // 6. Conecta o componente Prize de gameplay
         Prize prize = wrapper.AddComponent<Prize>();
-        prize.ConfigureFromStock(definition.resourceName, definition.rarity, definition.baseCaptureChance);
-
-        stockManager.RegisterSpawned(prize, definition);
+        float chance = rarity == PrizeRarity.Legendary ? 0.28f : rarity == PrizeRarity.Rare ? 0.38f : rarity == PrizeRarity.Uncommon ? 0.72f : 0.94f;
+        prize.ConfigureFromStock(variantId, rarity, chance);
+        PrizeVariantApplier.ApplyVariantStyle(wrapper, variantId, rarity);
     }
 
     private void CleanVisualHierarchy(GameObject visualRoot)

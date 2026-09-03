@@ -176,6 +176,12 @@ public class ArcadeCabinetBuilder
         // Moldura do Mural
         Cubo("Moldura_Top_Fundo", new Vector3(0, 2.95f, 2.54f), new Vector3(5.1f, 0.12f, 0.06f), mAcoInox, rootParedes);
 
+        // Pôster Neon Retroiluminado GARRAMANIA (Wallpaper Oficial no Fundo do Vidro)
+        GameObject posterObj = Cubo("Poster_Neon_Garramania", new Vector3(0, 1.30f, 2.52f), new Vector3(3.6f, 1.8f, 0.02f), mMarquee, rootParedes);
+        posterObj.transform.rotation = Quaternion.identity;
+        Cubo("Moldura_Poster_Neon_Top", new Vector3(0, 2.22f, 2.51f), new Vector3(3.68f, 0.04f, 0.04f), mNeonCyan, rootParedes);
+        Cubo("Moldura_Poster_Neon_Bot", new Vector3(0, 0.38f, 2.51f), new Vector3(3.68f, 0.04f, 0.04f), mNeonMagenta, rootParedes);
+
         // Vidros Físicos PBR Transparentes (Reflexos nítidos da garra, pelúcias e neons)
         // Cubo("Vidro_Frontal", new Vector3(0, 0.5f, -2.55f), new Vector3(4.8f, 4.8f, 0.02f), mVidroGabinete, rootParedes); // Omitido na frente para visibilidade cristalina
         Cubo("Vidro_Esquerdo", new Vector3(-2.55f, 0.5f, 0), new Vector3(0.02f, 4.8f, 4.8f), mVidroGabinete, rootParedes);

@@ -160,6 +160,72 @@ public sealed class CabinetThemeManager : MonoBehaviour
             var textComp = marqueeTransform.GetComponent<TextMesh>();
             if (textComp != null) textComp.text = theme.marqueeTitle;
         }
+
+        // Pôster Neon Retroiluminado de Fundo da Máquina
+        EnsureNeonWallpaperPoster(root, theme);
+    }
+
+    private void EnsureNeonWallpaperPoster(Transform root, CabinetThemeData theme)
+    {
+        Transform poster = root.Find("Poster_Neon_Garramania");
+        if (poster == null)
+        {
+            Transform paredes = root.Find("04_Paredes_Vidros");
+            if (paredes != null) poster = paredes.Find("Poster_Neon_Garramania");
+        }
+
+        if (poster == null)
+        {
+            GameObject pObj = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            pObj.name = "Poster_Neon_Garramania";
+            pObj.transform.SetParent(root, false);
+            pObj.transform.position = new Vector3(0, 1.25f, 2.52f);
+            pObj.transform.localScale = new Vector3(3.8f, 1.9f, 0.02f);
+            pObj.transform.rotation = Quaternion.identity;
+            Destroy(pObj.GetComponent<Collider>());
+
+            Material m = new Material(Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard"));
+            Texture2D tex = Resources.Load<Texture2D>("Textures/MarqueeBanner");
+            if (tex != null)
+            {
+                m.mainTexture = tex;
+                m.EnableKeyword("_EMISSION");
+                m.SetTexture("_EmissionMap", tex);
+                m.SetColor("_EmissionColor", Color.white * 2.2f);
+            }
+            pObj.GetComponent<MeshRenderer>().material = m;
+            poster = pObj.transform;
+
+            GameObject trimTop = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            trimTop.name = "Moldura_Poster_Neon_Top";
+            trimTop.transform.SetParent(root, false);
+            trimTop.transform.position = new Vector3(0, 2.22f, 2.51f);
+            trimTop.transform.localScale = new Vector3(3.9f, 0.06f, 0.04f);
+            Destroy(trimTop.GetComponent<Collider>());
+
+            GameObject trimBot = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            trimBot.name = "Moldura_Poster_Neon_Bot";
+            trimBot.transform.SetParent(root, false);
+            trimBot.transform.position = new Vector3(0, 0.28f, 2.51f);
+            trimBot.transform.localScale = new Vector3(3.9f, 0.06f, 0.04f);
+            Destroy(trimBot.GetComponent<Collider>());
+        }
+
+        if (poster != null)
+        {
+            Renderer r = poster.GetComponent<Renderer>();
+            if (r != null)
+            {
+                Texture2D tex = Resources.Load<Texture2D>("Textures/MarqueeBanner");
+                if (tex != null)
+                {
+                    r.material.mainTexture = tex;
+                    r.material.EnableKeyword("_EMISSION");
+                    r.material.SetTexture("_EmissionMap", tex);
+                    r.material.SetColor("_EmissionColor", Color.white * 2.2f);
+                }
+            }
+        }
     }
 
     private void ApplyBaseColor(Renderer rend, Color color)

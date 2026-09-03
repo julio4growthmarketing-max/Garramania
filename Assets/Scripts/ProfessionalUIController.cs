@@ -129,8 +129,9 @@ public sealed class ProfessionalUIController : MonoBehaviour
     private Text goldenBtnText;
     private Text camButtonText;
     private Text themeSelectorText;
-    private int albumCurrentPage = 0;
-    private Text albumPageText;
+    private CabinetThemeType albumActiveTab = CabinetThemeType.CyberNeon;
+    private Image[] albumTabBgs;
+    private Text[] albumTabTexts;
 
     private ClawController claw;
     private GameSession session;
@@ -442,6 +443,11 @@ public sealed class ProfessionalUIController : MonoBehaviour
         if (menuPanel != null) menuPanel.SetActive(false);
         if (controlsPanel != null) controlsPanel.SetActive(false);
 
+        if (CabinetThemeManager.Instance != null)
+        {
+            albumActiveTab = CabinetThemeManager.Instance.CurrentThemeType;
+        }
+
         BuildAlbumGrid();
         PopIn(albumPanel);
     }
@@ -487,11 +493,28 @@ public sealed class ProfessionalUIController : MonoBehaviour
 
     private void UpdateAlbumBadges()
     {
-        int unlocked = CollectionManager.Instance.GetUnlockedCount();
-        int total = CollectionManager.Instance.GetTotalCount();
-        string hudBadge = $"🏆 ({unlocked}/{total})";
+        var theme = CabinetThemeManager.Instance != null ? CabinetThemeManager.Instance.CurrentTheme : null;
+        int themeUnlocked = 0;
+        int themeTotal = 6;
+        if (theme != null && theme.exclusivePrizeIds != null)
+        {
+            themeTotal = theme.exclusivePrizeIds.Count;
+            for (int i = 0; i < theme.exclusivePrizeIds.Count; i++)
+            {
+                var it = CollectionManager.Instance.GetItem(theme.exclusivePrizeIds[i]);
+                if (it != null && it.IsUnlocked) themeUnlocked++;
+            }
+        }
+        else
+        {
+            themeUnlocked = CollectionManager.Instance.GetUnlockedCount();
+            themeTotal = CollectionManager.Instance.GetTotalCount();
+        }
+
+        string icon = theme != null ? theme.badgeIcon : "🏆";
+        string hudBadge = $"{icon} ({themeUnlocked}/{themeTotal})";
         if (albumHudButtonText != null) albumHudButtonText.text = hudBadge;
-        if (menuAlbumButtonText != null) menuAlbumButtonText.text = $"🏆 COLEÇÃO ({unlocked}/{total})";
+        if (menuAlbumButtonText != null) menuAlbumButtonText.text = $"🏆 COLEÇÃO ({themeUnlocked}/{themeTotal})";
     }
 
     private void UpdateDailyBadgeStatus()
@@ -772,42 +795,46 @@ public sealed class ProfessionalUIController : MonoBehaviour
     {
         bool isP = Screen.width < Screen.height;
         Vector2 sheetMin = isP ? new Vector2(0.04f, 0.02f) : new Vector2(0.18f, 0.02f);
-        Vector2 sheetMax = isP ? new Vector2(0.96f, 0.92f) : new Vector2(0.82f, 0.96f);
+        Vector2 sheetMax = isP ? new Vector2(0.96f, 0.94f) : new Vector2(0.82f, 0.96f);
 
         GameObject window = CreatePanel(parent, "AlbumWindow", ColorBgDeepNavy, sheetMin, sheetMax, Vector2.zero, Vector2.zero, true, GetRoundedRectSprite());
         CreatePanel(window.transform, "Border", ColorNeonCyan * 0.50f, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero, false, GetRoundedRectSprite()).transform.SetAsFirstSibling();
 
-        CreateText(window.transform, "Header", "🏆 ÁLBUM DE COLEÇÃO", new Vector2(0.05f, 0.925f), new Vector2(0.95f, 0.985f), Vector2.zero, Vector2.zero, isP ? 38 : 42, ColorNeonGold, TextAnchor.MiddleCenter, true);
-        albumProgressText = CreateText(window.transform, "ProgressPill", "COLEÇÃO: 0 / 18 DESBLOQUEADOS (0%)", new Vector2(0.05f, 0.865f), new Vector2(0.95f, 0.920f), Vector2.zero, Vector2.zero, 24, ColorNeonCyan, TextAnchor.MiddleCenter, true);
+        CreateText(window.transform, "Header", "🏆 ÁLBUM DE COLEÇÃO", new Vector2(0.05f, 0.925f), new Vector2(0.95f, 0.985f), Vector2.zero, Vector2.zero, isP ? 36 : 40, ColorNeonGold, TextAnchor.MiddleCenter, true);
 
-        GameObject gridObj = CreatePanel(window.transform, "GridContainer", Color.clear, new Vector2(0.04f, 0.16f), new Vector2(0.96f, 0.85f), Vector2.zero, Vector2.zero, false);
+        // 3 ABAS DE CABINES INDEPENDENTES
+        Vector2 tabsMin = new Vector2(0.04f, 0.855f);
+        Vector2 tabsMax = new Vector2(0.96f, 0.915f);
+        GameObject tabsBar = CreatePanel(window.transform, "TabsBar", ColorCardDark, tabsMin, tabsMax, Vector2.zero, Vector2.zero, false, GetRoundedRectSprite());
+
+        albumTabBgs = new Image[3];
+        albumTabTexts = new Text[3];
+
+        string[] tabLabels = { "🕹️ NEON", "🌸 KAWAII", "👑 VIP" };
+        CabinetThemeType[] tabTypes = { CabinetThemeType.CyberNeon, CabinetThemeType.KawaiiPastel, CabinetThemeType.GoldCasino };
+
+        for (int i = 0; i < 3; i++)
+        {
+            int tabIdx = i;
+            float step = 1.0f / 3.0f;
+            Vector2 tMin = new Vector2(i * step + 0.01f, 0.08f);
+            Vector2 tMax = new Vector2((i + 1) * step - 0.01f, 0.92f);
+
+            GameObject tabBtn = CreateArcadeButton(tabsBar.transform, $"Tab_{i}", tMin, tMax, Button3DTheme.Sapphire, () => {
+                albumActiveTab = tabTypes[tabIdx];
+                BuildAlbumGrid();
+            }, tabLabels[i], isP ? 18 : 20);
+
+            albumTabBgs[i] = tabBtn.GetComponent<Image>();
+            albumTabTexts[i] = tabBtn.GetComponentInChildren<Text>();
+        }
+
+        albumProgressText = CreateText(window.transform, "ProgressPill", "COLEÇÃO: 0 / 6 DESBLOQUEADOS (0%)", new Vector2(0.05f, 0.795f), new Vector2(0.95f, 0.845f), Vector2.zero, Vector2.zero, 22, ColorNeonCyan, TextAnchor.MiddleCenter, true);
+
+        GameObject gridObj = CreatePanel(window.transform, "GridContainer", Color.clear, new Vector2(0.04f, 0.10f), new Vector2(0.96f, 0.785f), Vector2.zero, Vector2.zero, false);
         albumGridContainer = gridObj.transform;
 
-        // Controles de Paginação (◀ PÁGINA 1 / 3 ▶)
-        Vector2 navMin = new Vector2(0.05f, 0.085f);
-        Vector2 navMax = new Vector2(0.95f, 0.150f);
-        GameObject navPanel = CreatePanel(window.transform, "NavPanel", Color.clear, navMin, navMax, Vector2.zero, Vector2.zero, false);
-
-        CreateArcadeButton(navPanel.transform, "PrevPageBtn", new Vector2(0.02f, 0.05f), new Vector2(0.28f, 0.95f), Button3DTheme.Sapphire, () => {
-            if (albumCurrentPage > 0)
-            {
-                albumCurrentPage--;
-                BuildAlbumGrid();
-            }
-        }, "◀ ANTERIOR", 20);
-
-        albumPageText = CreateText(navPanel.transform, "PageIndicator", "PÁGINA 1 / 3", new Vector2(0.30f, 0f), new Vector2(0.70f, 1f), Vector2.zero, Vector2.zero, 22, Color.white, TextAnchor.MiddleCenter, true);
-
-        CreateArcadeButton(navPanel.transform, "NextPageBtn", new Vector2(0.72f, 0.05f), new Vector2(0.98f, 0.95f), Button3DTheme.Sapphire, () => {
-            int totalPages = Mathf.CeilToInt((float)CollectionManager.Instance.GetTotalCount() / 6f);
-            if (albumCurrentPage < totalPages - 1)
-            {
-                albumCurrentPage++;
-                BuildAlbumGrid();
-            }
-        }, "PRÓXIMA ▶", 20);
-
-        CreateArcadeButton(window.transform, "CloseAlbumBtn", new Vector2(0.10f, 0.015f), new Vector2(0.90f, 0.075f), Button3DTheme.WhiteGhost, CloseAlbum, "VOLTAR À MÁQUINA", 24);
+        CreateArcadeButton(window.transform, "CloseAlbumBtn", new Vector2(0.10f, 0.015f), new Vector2(0.90f, 0.085f), Button3DTheme.WhiteGhost, CloseAlbum, "VOLTAR À MÁQUINA", 24);
 
         BuildInspectModal(parent);
     }
@@ -818,37 +845,47 @@ public sealed class ProfessionalUIController : MonoBehaviour
         foreach (Transform child in albumGridContainer) Destroy(child.gameObject);
 
         bool isP = Screen.width < Screen.height;
-        var allItems = CollectionManager.Instance.GetAllItems();
-        int unlocked = CollectionManager.Instance.GetUnlockedCount();
-        int total = CollectionManager.Instance.GetTotalCount();
-        int itemsPerPage = 6;
-        int totalPages = Mathf.Max(1, Mathf.CeilToInt((float)total / itemsPerPage));
 
-        albumCurrentPage = Mathf.Clamp(albumCurrentPage, 0, totalPages - 1);
+        // Atualiza botões das abas
+        if (albumTabBgs != null)
+        {
+            CabinetThemeType[] tabTypes = { CabinetThemeType.CyberNeon, CabinetThemeType.KawaiiPastel, CabinetThemeType.GoldCasino };
+            for (int t = 0; t < 3; t++)
+            {
+                bool active = (albumActiveTab == tabTypes[t]);
+                if (albumTabBgs[t] != null) albumTabBgs[t].color = active ? ColorNeonGold * 0.85f : ColorCardSlot;
+                if (albumTabTexts[t] != null) albumTabTexts[t].color = active ? Color.white : new Color(0.7f, 0.8f, 0.95f);
+            }
+        }
+
+        List<string> exclusiveIds = GetPrizesForTheme(albumActiveTab);
+        string themeTitle = albumActiveTab == CabinetThemeType.CyberNeon ? "CYBER NEON" : albumActiveTab == CabinetThemeType.KawaiiPastel ? "KAWAII CANDY" : "GOLD CASINO VIP";
+
+        int unlocked = 0;
+        for (int i = 0; i < exclusiveIds.Count; i++)
+        {
+            var it = CollectionManager.Instance.GetItem(exclusiveIds[i]);
+            if (it != null && it.IsUnlocked) unlocked++;
+        }
+
+        int total = exclusiveIds.Count;
+        int pct = Mathf.RoundToInt((float)unlocked / Mathf.Max(1, total) * 100f);
 
         if (albumProgressText != null)
         {
-            int pct = Mathf.RoundToInt((float)unlocked / total * 100f);
-            albumProgressText.text = $"COLEÇÃO: {unlocked} / {total} DESBLOQUEADOS ({pct}%)";
-        }
-
-        if (albumPageText != null)
-        {
-            albumPageText.text = $"PÁGINA {albumCurrentPage + 1} / {totalPages}";
+            albumProgressText.text = $"COLEÇÃO {themeTitle}: {unlocked} / {total} DESBLOQUEADOS ({pct}%)";
         }
 
         int cols = isP ? 2 : 3;
         int rows = isP ? 3 : 2;
 
-        int startIndex = albumCurrentPage * itemsPerPage;
-        int endIndex = Mathf.Min(startIndex + itemsPerPage, allItems.Count);
-
-        for (int i = startIndex; i < endIndex; i++)
+        for (int i = 0; i < exclusiveIds.Count; i++)
         {
-            var item = allItems[i];
-            int relIdx = i - startIndex;
-            int c = relIdx % cols;
-            int r = rows - 1 - (relIdx / cols);
+            var item = CollectionManager.Instance.GetItem(exclusiveIds[i]);
+            if (item == null) continue;
+
+            int c = i % cols;
+            int r = rows - 1 - (i / cols);
 
             float cellW = 1.0f / cols;
             float cellH = 1.0f / rows;
@@ -893,6 +930,20 @@ public sealed class ProfessionalUIController : MonoBehaviour
                 CreateText(card.transform, "Name", "???", new Vector2(0.04f, 0.16f), new Vector2(0.96f, 0.28f), Vector2.zero, Vector2.zero, 22, new Color(0.85f, 0.9f, 1f, 0.95f), TextAnchor.MiddleCenter, true);
                 CreateText(card.transform, "Hint", "BLOQUEADO", new Vector2(0.04f, 0.04f), new Vector2(0.96f, 0.16f), Vector2.zero, Vector2.zero, 20, new Color(0.6f, 0.7f, 0.85f, 0.8f), TextAnchor.MiddleCenter, false);
             }
+        }
+    }
+
+    private List<string> GetPrizesForTheme(CabinetThemeType type)
+    {
+        switch (type)
+        {
+            case CabinetThemeType.KawaiiPastel:
+                return new List<string> { "Fox_Arctic", "Bear_Polar", "Bear_Panda", "Koala_Eucalyptus", "Fish_Clown", "Porky_Classic" };
+            case CabinetThemeType.GoldCasino:
+                return new List<string> { "Fish_Gold", "Badger_Honey", "Fox_Shadow", "Bear_Galaxy", "Koala_King", "Porky_Diamond" };
+            case CabinetThemeType.CyberNeon:
+            default:
+                return new List<string> { "Fox", "GreenBear", "BalloonFish", "Koala", "Badger", "Porky" };
         }
     }
 

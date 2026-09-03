@@ -1157,6 +1157,8 @@ public class ClawController : MonoBehaviour
     {
         MeshRenderer[] rootRenderers = GetComponents<MeshRenderer>();
         foreach (MeshRenderer rendererBase in rootRenderers) rendererBase.enabled = false;
+        MeshFilter mf = GetComponent<MeshFilter>();
+        if (mf != null) mf.sharedMesh = null;
         BoxCollider rootCollider = GetComponent<BoxCollider>();
         if (rootCollider != null) rootCollider.enabled = false;
 
