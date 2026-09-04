@@ -86,6 +86,7 @@ public sealed class ProfessionalUIController : MonoBehaviour
     private GameObject dailyRewardModal;
     private GameObject setsModal;
     private GameObject vipShopModal;
+    private readonly Dictionary<GameObject, Coroutine> activePanelTransitions = new Dictionary<GameObject, Coroutine>();
 
     // Elementos de HUD
     private Text creditsText;
@@ -221,7 +222,6 @@ public sealed class ProfessionalUIController : MonoBehaviour
         session.OnCreditsChanged.AddListener(HandleCreditsChanged);
         session.OnPrizeDelivered.AddListener(HandlePrizeDelivered);
         session.OnPrizeWonShowResult.AddListener(HandlePrizeResult);
-        session.OnGameOver.AddListener(HandleGameOver);
 
         if (collection != null)
         {
@@ -316,7 +316,14 @@ public sealed class ProfessionalUIController : MonoBehaviour
     {
         if (resultPanel == null) return;
         string stockId = prize != null ? (!string.IsNullOrEmpty(prize.StockId) ? prize.StockId : prize.prizeId) : "Fox";
-        CaptureResult res = CollectionManager.Instance.RegisterCapture(stockId);
+        
+        CaptureResult res = CollectionManager.Instance != null ? CollectionManager.Instance.LastCaptureResult : default;
+        if (res.item == null)
+        {
+            res = CollectionManager.Instance != null 
+                ? CollectionManager.Instance.RegisterCapture(stockId) 
+                : new CaptureResult { item = new CollectionItem { id = stockId, displayName = stockId, rarity = PrizeRarity.Common } };
+        }
 
         if (resultNameText != null) resultNameText.text = res.item.displayName.ToUpperInvariant();
 
@@ -423,16 +430,16 @@ public sealed class ProfessionalUIController : MonoBehaviour
     public void ContinueAfterResult()
     {
         PopOut(resultPanel, () => {
-            if (session != null && session.Credits > 0)
+            if (session != null)
             {
-                session.SetState(GameState.Playing);
-                if (controlsPanel != null) controlsPanel.SetActive(true);
-                InputRouter.Instance?.SetBlocked(false);
-            }
-            else
-            {
-                session?.ResetSession();
-                InputRouter.Instance?.SetBlocked(true);
+                if (session.Credits > 0)
+                {
+                    StartGame();
+                }
+                else
+                {
+                    HandleGameOver();
+                }
             }
         });
     }
@@ -1044,17 +1051,22 @@ public sealed class ProfessionalUIController : MonoBehaviour
         foreach (string id in ids) GetPlushiePortrait(id);
     }
 
-
     private void PopIn(GameObject panel)
     {
         if (panel == null) return;
         panel.SetActive(true);
         CanvasGroup cg = panel.GetComponent<CanvasGroup>();
         if (cg == null) cg = panel.AddComponent<CanvasGroup>();
-        StartCoroutine(PopInRoutine(panel.GetComponent<RectTransform>(), cg));
+
+        if (activePanelTransitions.TryGetValue(panel, out var running) && running != null)
+        {
+            StopCoroutine(running);
+        }
+
+        activePanelTransitions[panel] = StartCoroutine(PopInRoutine(panel, panel.GetComponent<RectTransform>(), cg));
     }
 
-    private IEnumerator PopInRoutine(RectTransform rect, CanvasGroup cg)
+    private IEnumerator PopInRoutine(GameObject panel, RectTransform rect, CanvasGroup cg)
     {
         float duration = 0.20f;
         float elapsed = 0f;
@@ -1071,6 +1083,7 @@ public sealed class ProfessionalUIController : MonoBehaviour
         }
         rect.anchoredPosition = Vector2.zero;
         cg.alpha = 1f;
+        activePanelTransitions.Remove(panel);
     }
 
     private void PopOut(GameObject panel, Action onComplete = null)
@@ -1078,7 +1091,13 @@ public sealed class ProfessionalUIController : MonoBehaviour
         if (panel == null) return;
         CanvasGroup cg = panel.GetComponent<CanvasGroup>();
         if (cg == null) cg = panel.AddComponent<CanvasGroup>();
-        StartCoroutine(PopOutRoutine(panel, panel.GetComponent<RectTransform>(), cg, onComplete));
+
+        if (activePanelTransitions.TryGetValue(panel, out var running) && running != null)
+        {
+            StopCoroutine(running);
+        }
+
+        activePanelTransitions[panel] = StartCoroutine(PopOutRoutine(panel, panel.GetComponent<RectTransform>(), cg, onComplete));
     }
 
     private IEnumerator PopOutRoutine(GameObject panel, RectTransform rect, CanvasGroup cg, Action onComplete)
@@ -1094,6 +1113,7 @@ public sealed class ProfessionalUIController : MonoBehaviour
             yield return null;
         }
         panel.SetActive(false);
+        activePanelTransitions.Remove(panel);
         onComplete?.Invoke();
     }
 

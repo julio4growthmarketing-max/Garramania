@@ -88,33 +88,43 @@ public static class PrizeVariantApplier
         }
     }
 
+    private static MaterialPropertyBlock propertyBlock;
+
     private static void SetColors(Renderer[] renderers, Color baseColor, float metallic, float smoothness, Color? emission = null, bool unbindBaseMap = false)
     {
+        if (propertyBlock == null) propertyBlock = new MaterialPropertyBlock();
+
         foreach (var rend in renderers)
         {
             if (rend == null) continue;
-            foreach (var mat in rend.materials)
+
+            if (emission.HasValue && rend.sharedMaterials != null)
             {
-                if (mat == null) continue;
-
-                if (unbindBaseMap)
+                foreach (var sm in rend.sharedMaterials)
                 {
-                    if (mat.HasProperty("_BaseMap")) mat.SetTexture("_BaseMap", Texture2D.whiteTexture);
-                    if (mat.HasProperty("_MainTex")) mat.SetTexture("_MainTex", Texture2D.whiteTexture);
-                }
-
-                if (mat.HasProperty("_BaseColor")) mat.SetColor("_BaseColor", baseColor);
-                else if (mat.HasProperty("_Color")) mat.SetColor("_Color", baseColor);
-
-                if (mat.HasProperty("_Metallic")) mat.SetFloat("_Metallic", metallic);
-                if (mat.HasProperty("_Smoothness")) mat.SetFloat("_Smoothness", smoothness);
-
-                if (emission.HasValue)
-                {
-                    mat.EnableKeyword("_EMISSION");
-                    if (mat.HasProperty("_EmissionColor")) mat.SetColor("_EmissionColor", emission.Value);
+                    if (sm != null) sm.EnableKeyword("_EMISSION");
                 }
             }
+
+            rend.GetPropertyBlock(propertyBlock);
+
+            if (unbindBaseMap)
+            {
+                propertyBlock.SetTexture("_BaseMap", Texture2D.whiteTexture);
+                propertyBlock.SetTexture("_MainTex", Texture2D.whiteTexture);
+            }
+
+            propertyBlock.SetColor("_BaseColor", baseColor);
+            propertyBlock.SetColor("_Color", baseColor);
+            propertyBlock.SetFloat("_Metallic", metallic);
+            propertyBlock.SetFloat("_Smoothness", smoothness);
+
+            if (emission.HasValue)
+            {
+                propertyBlock.SetColor("_EmissionColor", emission.Value);
+            }
+
+            rend.SetPropertyBlock(propertyBlock);
         }
     }
 }

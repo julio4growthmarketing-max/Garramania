@@ -36,7 +36,7 @@ public sealed class PrizePileSpawner : MonoBehaviour
 
         // Limpa monte anterior se existir
         GameObject oldRoot = GameObject.Find("Monte_De_Ursos");
-        if (oldRoot != null) DestroyImmediate(oldRoot);
+        if (oldRoot != null) Destroy(oldRoot);
 
         pileRoot = new GameObject("Monte_De_Ursos").transform;
         pileRoot.SetParent(null, false);
@@ -263,9 +263,9 @@ public sealed class PrizePileSpawner : MonoBehaviour
     private void CleanVisualHierarchy(GameObject visualRoot)
     {
         foreach (Animator a in visualRoot.GetComponentsInChildren<Animator>(true)) a.enabled = false;
-        foreach (Prize p in visualRoot.GetComponentsInChildren<Prize>(true)) DestroyImmediate(p);
-        foreach (Collider c in visualRoot.GetComponentsInChildren<Collider>(true)) DestroyImmediate(c);
-        foreach (Rigidbody r in visualRoot.GetComponentsInChildren<Rigidbody>(true)) DestroyImmediate(r);
+        foreach (Prize p in visualRoot.GetComponentsInChildren<Prize>(true)) Destroy(p);
+        foreach (Collider c in visualRoot.GetComponentsInChildren<Collider>(true)) { c.enabled = false; Destroy(c); }
+        foreach (Rigidbody r in visualRoot.GetComponentsInChildren<Rigidbody>(true)) { r.isKinematic = true; Destroy(r); }
     }
 
     private void ScaleVisualUniformly(Transform wrapper, Transform visual)

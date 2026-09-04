@@ -99,7 +99,7 @@ public sealed class CabinetThemeManager : MonoBehaviour
         CurrentThemeType = CurrentTheme.themeType;
 
         PlayerPrefs.SetInt(PREF_SELECTED_THEME, (int)CurrentThemeType);
-        PlayerPrefs.Save();
+        PersistentSaveManager.MarkDirty();
 
         ApplyCurrentTheme();
         OnThemeChanged?.Invoke(CurrentTheme);
@@ -211,25 +211,33 @@ public sealed class CabinetThemeManager : MonoBehaviour
         }
     }
 
+    private static MaterialPropertyBlock themePropBlock;
+
     private void ApplyBaseColor(Renderer rend, Color color)
     {
-        foreach (Material mat in rend.materials)
-        {
-            if (mat == null) continue;
-            if (mat.HasProperty("_BaseColor")) mat.SetColor("_BaseColor", color);
-            else if (mat.HasProperty("_Color")) mat.SetColor("_Color", color);
-        }
+        if (rend == null) return;
+        if (themePropBlock == null) themePropBlock = new MaterialPropertyBlock();
+        rend.GetPropertyBlock(themePropBlock);
+        themePropBlock.SetColor("_BaseColor", color);
+        themePropBlock.SetColor("_Color", color);
+        rend.SetPropertyBlock(themePropBlock);
     }
 
     private void ApplyEmissionColor(Renderer rend, Color color)
     {
-        foreach (Material mat in rend.materials)
+        if (rend == null) return;
+        if (rend.sharedMaterials != null)
         {
-            if (mat == null) continue;
-            mat.EnableKeyword("_EMISSION");
-            if (mat.HasProperty("_EmissionColor")) mat.SetColor("_EmissionColor", color);
-            if (mat.HasProperty("_BaseColor")) mat.SetColor("_BaseColor", color * 0.5f);
+            foreach (var sm in rend.sharedMaterials)
+            {
+                if (sm != null) sm.EnableKeyword("_EMISSION");
+            }
         }
+        if (themePropBlock == null) themePropBlock = new MaterialPropertyBlock();
+        rend.GetPropertyBlock(themePropBlock);
+        themePropBlock.SetColor("_EmissionColor", color);
+        themePropBlock.SetColor("_BaseColor", color * 0.5f);
+        rend.SetPropertyBlock(themePropBlock);
     }
 
     private void UpdateLighting(CabinetThemeData theme)

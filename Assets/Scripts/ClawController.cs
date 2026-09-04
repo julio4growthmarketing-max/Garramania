@@ -1,4 +1,5 @@
 using UnityEngine;
+using System.Collections;
 using System.Collections.Generic;
 
 public class ClawController : MonoBehaviour
@@ -426,13 +427,22 @@ public class ClawController : MonoBehaviour
         }
 
         isExecutingCycle = false;
+        AudioFeedbackController.Instance?.SetMotorMoving(false);
         CabinetLightingController.Instance?.SetDramaticFocus(false);
+        Time.timeScale = 1.0f;
+        Time.fixedDeltaTime = 0.02f;
+
         if (GameSession.Instance != null && GameSession.Instance.CurrentState != GameState.GameOver)
         {
             // Se houve captura, a tela de vitória permanece aberta até o jogador fechar
             if (!haviaPremio)
             {
                 GameSession.Instance.SetState(GameState.Playing);
+            }
+            else
+            {
+                // Watchdog: se o prêmio escapou antes do sensor da calha, recupera o jogo após 1.2s
+                StartCoroutine(VerificarFallbackEntrega());
             }
         }
         if (InputRouter.Instance != null && (GameSession.Instance == null || GameSession.Instance.CurrentState == GameState.Playing))
@@ -443,6 +453,24 @@ public class ClawController : MonoBehaviour
             }
         }
         OnClawStateChanged?.Invoke(false);
+    }
+
+    private IEnumerator VerificarFallbackEntrega()
+    {
+        yield return new WaitForSecondsRealtime(1.2f);
+        if (GameSession.Instance != null && GameSession.Instance.CurrentState == GameState.Delivering)
+        {
+            Debug.LogWarning("[ClawController] Watchdog: Prêmio não detectado na calha a tempo. Destravando máquina.");
+            if (GameSession.Instance.TimeRemaining > 0)
+            {
+                GameSession.Instance.SetState(GameState.Playing);
+                InputRouter.Instance?.SetBlocked(false);
+            }
+            else
+            {
+                GameSession.Instance.TimeoutGameOver();
+            }
+        }
     }
 
     private void UpdateSolenoidPWM(float ascentProgress)
@@ -1126,6 +1154,10 @@ public class ClawController : MonoBehaviour
     {
         StopAllCoroutines();
         isExecutingCycle = false;
+        Time.timeScale = 1.0f;
+        Time.fixedDeltaTime = 0.02f;
+        AudioFeedbackController.Instance?.SetMotorMoving(false);
+        CabinetLightingController.Instance?.SetDramaticFocus(false);
         transform.position = new Vector3(0, LIM_YMAX, 0);
         isClosed = false;
         if (clawAnimationRoutine != null) StopCoroutine(clawAnimationRoutine);

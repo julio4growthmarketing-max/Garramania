@@ -47,7 +47,7 @@ public class AccessibilityManager : MonoBehaviour
     {
         HighContrast = enabled;
         PlayerPrefs.SetInt(PREF_HIGH_CONTRAST, enabled ? 1 : 0);
-        PlayerPrefs.Save();
+        PersistentSaveManager.MarkDirty();
         OnSettingsChanged?.Invoke();
     }
 
@@ -55,7 +55,7 @@ public class AccessibilityManager : MonoBehaviour
     {
         HapticsEnabled = enabled;
         PlayerPrefs.SetInt(PREF_HAPTICS, enabled ? 1 : 0);
-        PlayerPrefs.Save();
+        PersistentSaveManager.MarkDirty();
         OnSettingsChanged?.Invoke();
     }
 
@@ -63,7 +63,7 @@ public class AccessibilityManager : MonoBehaviour
     {
         ReduceMotion = enabled;
         PlayerPrefs.SetInt(PREF_REDUCE_MOTION, enabled ? 1 : 0);
-        PlayerPrefs.Save();
+        PersistentSaveManager.MarkDirty();
         OnSettingsChanged?.Invoke();
     }
 
@@ -71,7 +71,7 @@ public class AccessibilityManager : MonoBehaviour
     {
         LargeTouchTargets = enabled;
         PlayerPrefs.SetInt(PREF_LARGE_TOUCH, enabled ? 1 : 0);
-        PlayerPrefs.Save();
+        PersistentSaveManager.MarkDirty();
         OnSettingsChanged?.Invoke();
     }
 

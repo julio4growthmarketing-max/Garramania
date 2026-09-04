@@ -80,7 +80,7 @@ public class GameSession : MonoBehaviour
     {
         PlayerPrefs.SetInt(PREFS_CREDITS, Credits);
         PlayerPrefs.SetInt(PREFS_HIGHSCORE, HighScore);
-        PlayerPrefs.Save();
+        PersistentSaveManager.MarkDirty();
     }
 
     public void CheckHighScore()
@@ -224,27 +224,29 @@ public class GameSession : MonoBehaviour
 
     public void StartGame()
     {
-        if (CurrentState != GameState.Idle && CurrentState != GameState.GameOver)
+        if (CurrentState != GameState.Idle && CurrentState != GameState.GameOver && CurrentState != GameState.Delivering)
         {
             Debug.LogWarning($"[GameSession] Não é possível iniciar uma partida no estado {CurrentState}.");
             return;
         }
 
+        // Restaura tempo e física garantidos
+        Time.timeScale = 1.0f;
+        Time.fixedDeltaTime = 0.02f;
+
+        if (clawController == null)
+        {
+            clawController = FindFirstObjectByType<ClawController>();
+        }
+        if (clawController != null)
+        {
+            clawController.ResetarGarra();
+        }
+
         if (Credits <= 0)
         {
-            Credits = 5;
-            OnCreditsChanged?.Invoke(Credits);
-            if (false)
-            {
-                Debug.Log("[GameSession] Fichas esgotadas. A partida não foi iniciada.");
-                OnCreditsChanged?.Invoke(Credits);
-                return;
-            }
-
-            // Modo protótipo: uma sessão anterior não pode deixar o botão
-            // inicial permanentemente sem ação durante os testes.
             Credits = Mathf.Max(1, initialCredits);
-            Debug.Log($"[GameSession] Playtest: fichas restauradas para {Credits}.");
+            SaveData();
             OnCreditsChanged?.Invoke(Credits);
         }
 
@@ -273,7 +275,12 @@ public class GameSession : MonoBehaviour
 
     public void TimeoutGameOver()
     {
+        if (CurrentState == GameState.GameOver) return;
+
         Debug.Log("[GameSession] Tempo esgotado! Bloqueando InputRouter e resetando garra.");
+
+        Time.timeScale = 1.0f;
+        Time.fixedDeltaTime = 0.02f;
 
         SetState(GameState.GameOver);
 
@@ -341,6 +348,9 @@ public class GameSession : MonoBehaviour
 
     public void ResetSession()
     {
+        Time.timeScale = 1.0f;
+        Time.fixedDeltaTime = 0.02f;
+
         if (prototypeInfiniteRetries && Credits <= 0)
         {
             Credits = Mathf.Max(1, initialCredits);

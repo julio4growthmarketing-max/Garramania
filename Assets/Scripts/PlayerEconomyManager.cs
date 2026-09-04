@@ -54,7 +54,7 @@ public sealed class PlayerEconomyManager : MonoBehaviour
         PlayerPrefs.SetInt(PREF_GAMES_PLAYED_COUNT, GamesPlayedCounter);
         PlayerPrefs.SetInt(PREF_DAILY_STREAK, CurrentStreakDay);
         PlayerPrefs.SetInt(PREF_VIP_ACTIVE, IsVIP ? 1 : 0);
-        PlayerPrefs.Save();
+        PersistentSaveManager.MarkDirty();
         OnEconomyUpdated?.Invoke();
     }
 

@@ -268,11 +268,13 @@ public sealed class CollectionManager : MonoBehaviour
         }
     }
 
+    public CaptureResult LastCaptureResult { get; private set; }
+
     private void SaveItem(CollectionItem item)
     {
         PlayerPrefs.SetInt(PREF_PREFIX_COUNT + item.id, item.count);
         PlayerPrefs.SetString(PREF_PREFIX_DATE + item.id, item.firstCapturedAt);
-        PlayerPrefs.Save();
+        PersistentSaveManager.MarkDirty();
     }
 
     public void HandlePrizeDelivered(Prize prize, int totalDelivered)
@@ -313,6 +315,8 @@ public sealed class CollectionManager : MonoBehaviour
             totalOfThisType = item.count,
             totalUniqueUnlocked = GetUnlockedCount()
         };
+
+        LastCaptureResult = res;
 
         OnPrizeCaptured?.Invoke(res);
         OnCollectionUpdated?.Invoke();
@@ -447,7 +451,7 @@ public sealed class CollectionManager : MonoBehaviour
         if (set == null || !IsSetComplete(set) || set.hasClaimedSetReward) return false;
         set.hasClaimedSetReward = true;
         PlayerPrefs.SetInt("GarraMania_SetClaimed_" + set.setId, 1);
-        PlayerPrefs.Save();
+        PersistentSaveManager.MarkDirty();
 
         if (GameSession.Instance != null)
         {

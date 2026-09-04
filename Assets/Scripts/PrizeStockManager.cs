@@ -259,7 +259,7 @@ public sealed class PrizeStockManager : MonoBehaviour
     {
         rarePityMisses = Mathf.Min(maxRarePityMisses, rarePityMisses + 1);
         PlayerPrefs.SetInt(PityKey, rarePityMisses);
-        PlayerPrefs.Save();
+        PersistentSaveManager.MarkDirty();
     }
 
     public bool CanAttemptCapture(Prize prize)
@@ -303,7 +303,7 @@ public sealed class PrizeStockManager : MonoBehaviour
         }
         SaveEntryState(entry);
         nextActiveRefillAt = Mathf.Min(nextActiveRefillAt, Time.unscaledTime + activeRefillIntervalSeconds);
-        PlayerPrefs.Save();
+        PersistentSaveManager.MarkDirty();
 
         Debug.Log($"[PrizeStock] Entrega {entry.rarity}: {entry.resourceName}. Ativos: {ActiveCount}/{targetBoardCount}. {DescribeStock()}");
     }
@@ -438,7 +438,7 @@ public sealed class PrizeStockManager : MonoBehaviour
             entry.active = 0;
             PlayerPrefs.SetInt(ActiveKeyPrefix + entry.resourceName, 0);
         }
-        PlayerPrefs.Save();
+        PersistentSaveManager.MarkDirty();
     }
 
     private void ApplyOfflineRefill()
@@ -459,7 +459,7 @@ public sealed class PrizeStockManager : MonoBehaviour
             Debug.Log($"[PrizeStock] Reposição offline aplicada: {cycles} ciclo(s).");
         }
         PlayerPrefs.SetString(LastRefillKey, now.Ticks.ToString());
-        PlayerPrefs.Save();
+        PersistentSaveManager.MarkDirty();
     }
 
     private void EnsureMinimumBoardReserve()
@@ -534,7 +534,7 @@ public sealed class PrizeStockManager : MonoBehaviour
         if (entry == null) return;
         PlayerPrefs.SetInt(StockKeyPrefix + entry.resourceName, entry.available);
         PlayerPrefs.SetInt(ActiveKeyPrefix + entry.resourceName, entry.active);
-        PlayerPrefs.Save();
+        PersistentSaveManager.MarkDirty();
     }
 
     private void SaveAllEntryStates()
@@ -559,7 +559,7 @@ public sealed class PrizeStockManager : MonoBehaviour
     {
         ClearPersistentState();
         PlayerPrefs.DeleteKey(StockVersionKey);
-        PlayerPrefs.Save();
+        PersistentSaveManager.MarkDirty();
         Debug.Log("[PrizeStock] Estoque persistido resetado para playtest. Recarregue a cena para reconstruir o monte.");
     }
 

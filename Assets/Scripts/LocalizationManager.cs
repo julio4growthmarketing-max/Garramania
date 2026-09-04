@@ -101,7 +101,7 @@ public class LocalizationManager : MonoBehaviour
         if (currentLanguage == langCode) return;
         currentLanguage = langCode;
         PlayerPrefs.SetString(PREF_LANG, currentLanguage);
-        PlayerPrefs.Save();
+        PersistentSaveManager.MarkDirty();
 
         OnLanguageChanged?.Invoke();
     }
