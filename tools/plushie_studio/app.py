@@ -4,6 +4,14 @@ import subprocess
 import shutil
 from pathlib import Path
 
+# Configura codificação do console para evitar crash no Windows cp1252
+if sys.platform == "win32":
+    try:
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+
 # Adiciona diretório ao path
 BASE_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(BASE_DIR))
@@ -144,12 +152,7 @@ def process_and_inject_plushie(
 def build_gradio_ui():
     import gradio as gr
 
-    theme = gr.themes.Soft(
-        primary_hue="purple",
-        secondary_hue="cyan"
-    )
-
-    with gr.Blocks(title="GarraMania 3D Plushie Studio", theme=theme) as demo:
+    with gr.Blocks(title="GarraMania 3D Plushie Studio") as demo:
         gr.Markdown(
             """
             # 🧸 GarraMania 3D Plushie Studio & Pipeline
@@ -222,7 +225,16 @@ if __name__ == "__main__":
     try:
         import gradio as gr
         demo = build_gradio_ui()
-        print("Iniciando GarraMania Plushie Studio em http://127.0.0.1:7860 ...")
-        demo.launch(server_name="127.0.0.1", server_port=7860, share=False)
+        print("\n=======================================================")
+        print("  [GarraMania] 3D Plushie Studio Iniciado!")
+        print("  Acesse: http://127.0.0.1:7860")
+        print("=======================================================\n")
+        demo.launch(
+            server_name="127.0.0.1",
+            server_port=7860,
+            share=False,
+            inbrowser=True,
+            theme=gr.themes.Soft(primary_hue="purple", secondary_hue="cyan")
+        )
     except ImportError:
-        print("Gradio não está instalado. Execute 'pip install gradio' para iniciar a interface web.")
+        print("Gradio não está instalado no ambiente.")

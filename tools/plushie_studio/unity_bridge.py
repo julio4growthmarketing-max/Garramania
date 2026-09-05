@@ -2,14 +2,24 @@ import re
 import os
 import shutil
 from pathlib import Path
-from .config import (
-    COLLECTION_MANAGER_CS,
-    PRIZE_STOCK_MANAGER_CS,
-    CABINET_THEME_DATA_CS,
-    PRIZE_PILE_SPAWNER_CS,
-    PRIZE_CS,
-    UNITY_RESOURCES_PRIZES
-)
+try:
+    from .config import (
+        COLLECTION_MANAGER_CS,
+        PRIZE_STOCK_MANAGER_CS,
+        CABINET_THEME_DATA_CS,
+        PRIZE_PILE_SPAWNER_CS,
+        PRIZE_CS,
+        UNITY_RESOURCES_PRIZES
+    )
+except (ImportError, ValueError):
+    from config import (
+        COLLECTION_MANAGER_CS,
+        PRIZE_STOCK_MANAGER_CS,
+        CABINET_THEME_DATA_CS,
+        PRIZE_PILE_SPAWNER_CS,
+        PRIZE_CS,
+        UNITY_RESOURCES_PRIZES
+    )
 
 class UnityBridge:
     def __init__(self):
