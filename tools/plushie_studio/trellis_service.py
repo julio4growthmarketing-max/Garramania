@@ -23,8 +23,8 @@ def generate_3d_from_image(image_path: str, hf_token: str = None, progress_callb
     last_err = None
     for space_id in TRELLIS_SPACES:
         try:
-            log(f"Tentando endpoint: {space_id}...")
-            client = Client(space_id, hf_token=hf_token if hf_token else None)
+            tok = hf_token.strip() if (hf_token and hf_token.strip()) else None
+            client = Client(space_id, token=tok)
 
             log("1/3 Pré-processando imagem (remoção de fundo e enquadramento)...")
             try:
