@@ -127,15 +127,12 @@ def process_and_inject_plushie(
         log(f"❌ Exceção ao rodar Blender: {e}")
         return f"Erro: {e}", None, "\n".join(logs)
 
-    # 2. Criação / Configuração do Prefab na Unity
-    prefab_out = output_dir / f"{prize_id}.prefab"
-    teddy_prefab = output_dir / "Teddy.prefab"
-    if not prefab_out.exists() and teddy_prefab.exists():
-        shutil.copyfile(teddy_prefab, prefab_out)
-        log(f"✅ Template de Prefab criado para {prize_id}.prefab")
+    # 2. Criação / Configuração do Prefab na Unity vinculado ao modelo FBX
+    bridge = UnityBridge()
+    ok_prefab, msg_prefab = bridge.create_or_update_prefab(prize_id, fbx_out)
+    log(f"   [{prize_id}.prefab] {msg_prefab}")
 
     # 3. Registro no Sistema C# da Unity via UnityBridge
-    bridge = UnityBridge()
     log("Injetando definições nos scripts C# da Unity...")
 
     # A) Coleção

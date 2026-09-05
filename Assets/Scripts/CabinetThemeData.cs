@@ -74,7 +74,7 @@ public class CabinetThemeData
             spotlightColor = new Color(1.00f, 0.92f, 0.95f),     // Luz quente rosada
             marqueeTitle = "SWEET CANDY CLAW",
             wallpaperResourcePath = "Textures/Wallpaper_KawaiiCandy",
-            exclusivePrizeIds = new List<string> { "Teddy", "Fox_Arctic", "Bear_Polar", "Bear_Panda", "Koala_Eucalyptus", "Fish_Clown", "Porky_Classic" }
+            exclusivePrizeIds = new List<string> { "Teddy_Marron", "Teddy", "Fox_Arctic", "Bear_Polar", "Bear_Panda", "Koala_Eucalyptus", "Fish_Clown", "Porky_Classic" }
         };
     }
 

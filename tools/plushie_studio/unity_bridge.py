@@ -139,3 +139,31 @@ class UnityBridge:
                 PRIZE_PILE_SPAWNER_CS.write_text(spawner_code, encoding="utf-8")
 
         return True, "Física e Spawner calibrados com sucesso!"
+
+    def create_or_update_prefab(self, prize_id: str, fbx_path: Path):
+        """Gera o arquivo .prefab da Unity vinculado ao GUID do novo FBX gerado"""
+        import uuid
+        output_dir = self.prizes_dir
+        prefab_out = output_dir / f"{prize_id}.prefab"
+        teddy_prefab = output_dir / "Teddy.prefab"
+        fbx_meta = Path(str(fbx_path) + ".meta")
+
+        # Garante que o FBX tenha um GUID
+        fbx_guid = None
+        if fbx_meta.exists():
+            for line in fbx_meta.read_text(encoding="utf-8").splitlines():
+                if line.startswith("guid:"):
+                    fbx_guid = line.split("guid:")[1].strip()
+                    break
+        if not fbx_guid:
+            fbx_guid = uuid.uuid4().hex
+            fbx_meta.write_text(f"fileFormatVersion: 2\nguid: {fbx_guid}\n", encoding="utf-8")
+
+        if teddy_prefab.exists():
+            template_text = teddy_prefab.read_text(encoding="utf-8")
+            # Substitui o GUID base do Teddy (fa0ee3e6506080844a502ea3d4ee9d2a) pelo GUID do novo FBX
+            new_prefab_text = template_text.replace("fa0ee3e6506080844a502ea3d4ee9d2a", fbx_guid)
+            new_prefab_text = new_prefab_text.replace("value: Teddy", f"value: {prize_id}")
+            prefab_out.write_text(new_prefab_text, encoding="utf-8")
+            return True, f"Prefab {prize_id}.prefab vinculado ao FBX ({fbx_guid})!"
+        return False, "Template Teddy.prefab não encontrado."

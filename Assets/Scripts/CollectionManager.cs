@@ -58,6 +58,7 @@ public sealed class CollectionManager : MonoBehaviour
     private readonly Dictionary<string, CollectionItem> items = new Dictionary<string, CollectionItem>(StringComparer.OrdinalIgnoreCase);
     private readonly List<string> orderedIds = new List<string> 
     { 
+        "Teddy_Marron",
         "Teddy",
         "Fox", "Fox_Arctic", "Fox_Shadow",
         "GreenBear", "Bear_Panda", "Bear_Polar", "Bear_Galaxy",
@@ -100,7 +101,17 @@ public sealed class CollectionManager : MonoBehaviour
     {
         items.Clear();
 
-        // --- TEDDY BEAR NOBRE (TRELLIS) ---
+        
+        // --- GARRAMANIA ---
+        items["Teddy_Marron"] = new CollectionItem
+        {
+            id = "Teddy_Marron",
+            displayName = "GarraMania 🧸",
+            rarity = PrizeRarity.Legendary,
+            lore = "Um urso marron lenedário",
+            themeColor = ColorLegendary
+        };
+// --- TEDDY BEAR NOBRE (TRELLIS) ---
         items["Teddy"] = new CollectionItem
         {
             id = "Teddy",

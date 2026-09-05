@@ -132,6 +132,16 @@ public class Prize : MonoBehaviour
             BaseCaptureChance = 0.95f;
         }
 
+        
+        // Calibração especial para Teddy_Marron
+        if (StockId != null && StockId.IndexOf("Teddy_Marron", System.StringComparison.OrdinalIgnoreCase) >= 0)
+        {
+            gripRequired = 0.18f;
+            massFeel = 0.85f;
+            slipperiness = 0.05f;
+            BaseCaptureChance = 0.75f;
+        }
+
         if (Body != null) Body.mass = massFeel;
 
         if (Rarity == PrizeRarity.Rare || Rarity == PrizeRarity.Legendary)
