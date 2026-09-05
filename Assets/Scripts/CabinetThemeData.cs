@@ -53,7 +53,7 @@ public class CabinetThemeData
             spotlightColor = new Color(0.90f, 0.95f, 1.00f),     // Luz branca pura
             marqueeTitle = "GARRAMANIA NEON",
             wallpaperResourcePath = "Textures/Wallpaper_CyberNeon",
-            exclusivePrizeIds = new List<string> { "Fox", "GreenBear", "BalloonFish", "Koala", "Badger", "Porky" }
+            exclusivePrizeIds = new List<string> { "Teddy", "Fox", "GreenBear", "BalloonFish", "Koala", "Badger", "Porky" }
         };
     }
 
@@ -74,7 +74,7 @@ public class CabinetThemeData
             spotlightColor = new Color(1.00f, 0.92f, 0.95f),     // Luz quente rosada
             marqueeTitle = "SWEET CANDY CLAW",
             wallpaperResourcePath = "Textures/Wallpaper_KawaiiCandy",
-            exclusivePrizeIds = new List<string> { "Fox_Arctic", "Bear_Polar", "Bear_Panda", "Koala_Eucalyptus", "Fish_Clown", "Porky_Classic" }
+            exclusivePrizeIds = new List<string> { "Teddy", "Fox_Arctic", "Bear_Polar", "Bear_Panda", "Koala_Eucalyptus", "Fish_Clown", "Porky_Classic" }
         };
     }
 
@@ -95,7 +95,7 @@ public class CabinetThemeData
             spotlightColor = new Color(1.00f, 0.88f, 0.50f),     // Luz de cassino dourada
             marqueeTitle = "VIP HIGH ROLLER",
             wallpaperResourcePath = "Textures/Wallpaper_GoldCasino",
-            exclusivePrizeIds = new List<string> { "Fish_Gold", "Badger_Honey", "Fox_Shadow", "Bear_Galaxy", "Koala_King", "Porky_Diamond" }
+            exclusivePrizeIds = new List<string> { "Teddy", "Fish_Gold", "Badger_Honey", "Fox_Shadow", "Bear_Galaxy", "Koala_King", "Porky_Diamond" }
         };
     }
 }

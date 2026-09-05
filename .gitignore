@@ -116,3 +116,10 @@ InitTestScene*.unity*
 # Auto-generated cache in Assets folder
 /[Aa]ssets/[Ss]ceneDependencyCache*
 /[Aa]ssets/_Recovery/
+
+# Local Scratch & Temp
+scratch/
+TempScreenshots/
+tools/**/.venv/
+tools/**/__pycache__/
+tools/**/previews/

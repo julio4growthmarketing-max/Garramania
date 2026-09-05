@@ -58,6 +58,7 @@ public sealed class CollectionManager : MonoBehaviour
     private readonly Dictionary<string, CollectionItem> items = new Dictionary<string, CollectionItem>(StringComparer.OrdinalIgnoreCase);
     private readonly List<string> orderedIds = new List<string> 
     { 
+        "Teddy",
         "Fox", "Fox_Arctic", "Fox_Shadow",
         "GreenBear", "Bear_Panda", "Bear_Polar", "Bear_Galaxy",
         "BalloonFish", "Fish_Clown", "Fish_Gold",
@@ -98,6 +99,16 @@ public sealed class CollectionManager : MonoBehaviour
     private void InitializeItems()
     {
         items.Clear();
+
+        // --- TEDDY BEAR NOBRE (TRELLIS) ---
+        items["Teddy"] = new CollectionItem
+        {
+            id = "Teddy",
+            displayName = "Ursinho Teddy Nobre 🎀",
+            rarity = PrizeRarity.Rare,
+            lore = "Criado com tecnologia 3D de ponta e muito carinho! Ostenta um luxuoso laço de cetim rosa e pelúcia aveludada.",
+            themeColor = ColorRare
+        };
 
         // --- FAMÍLIA RAPOSA ---
         items["Fox"] = new CollectionItem

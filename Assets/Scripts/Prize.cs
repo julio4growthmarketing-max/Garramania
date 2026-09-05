@@ -118,9 +118,18 @@ public class Prize : MonoBehaviour
                 break;
             case PrizeRarity.Legendary:
                 gripRequired = 0.58f;
-                massFeel = 1.45f;
-                slipperiness = 0.30f;
+                massFeel = 1.50f;
+                slipperiness = 0.28f;
                 break;
+        }
+
+        // Calibração especial para o Teddy (pegada firme, peso equilibrado e alta aderência à garra)
+        if (StockId != null && StockId.IndexOf("teddy", System.StringComparison.OrdinalIgnoreCase) >= 0)
+        {
+            gripRequired = 0.18f;
+            massFeel = 0.85f;
+            slipperiness = 0.05f;
+            BaseCaptureChance = 0.95f;
         }
 
         if (Body != null) Body.mass = massFeel;

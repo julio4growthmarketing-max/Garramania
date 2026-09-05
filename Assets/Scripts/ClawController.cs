@@ -4,10 +4,31 @@ using System.Collections.Generic;
 
 public class ClawController : MonoBehaviour
 {
-    private float LIM_X = 1.3f;
-    private float LIM_Z = 1.3f;
-    private float LIM_YMAX = 1.65f;
-    private float LIM_YMIN = -0.95f;
+    [Header("Limites do Guindaste (Gantry Boundaries)")]
+    [Tooltip("Limite horizontal máximo em X (largura lateral da máquina)")]
+    [SerializeField, Range(1.0f, 2.1f)] private float LIM_X = 1.82f;
+    [Tooltip("Limite de profundidade máximo em Z (frente e fundo da máquina)")]
+    [SerializeField, Range(1.0f, 2.1f)] private float LIM_Z = 1.80f;
+    [Tooltip("Altura máxima de subida da garra (repouso no topo)")]
+    [SerializeField] private float LIM_YMAX = 1.65f;
+    [Tooltip("Limite mínimo de descida")]
+    [SerializeField] private float LIM_YMIN = -0.95f;
+
+    [Header("Mola Helicoidal / Cabo Espiralado (Arcade Coiled Spring)")]
+    [Tooltip("Exibir cabo espiralado elétrico conectando o guindaste à garra")]
+    [SerializeField] private bool showCoiledSpring = true;
+    [Tooltip("Cor do cabo espiralado (preto emborrachado arcade clássico ou metálico)")]
+    [SerializeField] private Color springColor = new Color(0.16f, 0.17f, 0.20f, 1.0f);
+    [Tooltip("Raio das espiras da mola ao redor do cabo central")]
+    [SerializeField, Range(0.02f, 0.10f)] private float springRadius = 0.052f;
+    [Tooltip("Quantidade de espiras da mola")]
+    [SerializeField, Range(6, 30)] private int springTurns = 15;
+    [Tooltip("Espessura do fio da mola")]
+    [SerializeField, Range(0.008f, 0.04f)] private float springWidth = 0.016f;
+
+    private LineRenderer coiledSpring;
+    private GameObject springObj;
+    private Vector3[] springPointsBuffer;
 
     // Juice: throttle para som do servo não spammar
     private float servoSoundTimer = 0f;
@@ -105,6 +126,11 @@ public class ClawController : MonoBehaviour
 
     void Start()
     {
+        if (LIM_X <= 0.1f) LIM_X = 1.82f;
+        if (LIM_Z <= 0.1f) LIM_Z = 1.80f;
+        if (springRadius <= 0.001f) springRadius = 0.052f;
+        if (springTurns <= 0) springTurns = 15;
+        if (springWidth <= 0.001f) springWidth = 0.016f;
         transform.position = new Vector3(0f, LIM_YMAX, 0f);
         stockManager = PrizeStockManager.Instance;
 
@@ -153,12 +179,33 @@ public class ClawController : MonoBehaviour
         cable.material.color = new Color(0.82f, 0.85f, 0.90f, 1.0f);
         cable.positionCount = 2;
 
+        // Mola Helicoidal / Cabo Espiralado do Solenoide Arcade
+        if (springObj == null)
+        {
+            springObj = new GameObject("MolaEspiral_Guindaste");
+            springObj.transform.SetParent(transform, false);
+            coiledSpring = springObj.AddComponent<LineRenderer>();
+            coiledSpring.useWorldSpace = true;
+            coiledSpring.startWidth = springWidth;
+            coiledSpring.endWidth = springWidth;
+            coiledSpring.numCornerVertices = 4;
+            coiledSpring.numCapVertices = 4;
+
+            Shader sSpring = Shader.Find("Universal Render Pipeline/Unlit") 
+                          ?? Shader.Find("Sprites/Default") 
+                          ?? Shader.Find("Universal Render Pipeline/Particles/Unlit");
+            Material mSpring = new Material(sSpring != null ? sSpring : Shader.Find("Hidden/InternalErrorShader"));
+            mSpring.color = springColor;
+            coiledSpring.material = mSpring;
+        }
+
         AtualizarCabo();
     }
 
     private void OnDestroy()
     {
         if (cable3D != null) Destroy(cable3D);
+        if (springObj != null) Destroy(springObj);
     }
 
     private bool isExecutingCycle = false;
@@ -1148,6 +1195,72 @@ public class ClawController : MonoBehaviour
             cable.SetPosition(0, topAnchor);
             cable.SetPosition(1, bottomAnchor);
         }
+
+        AtualizarMolaEspiral(topAnchor, bottomAnchor);
+    }
+
+    private void AtualizarMolaEspiral(Vector3 topAnchor, Vector3 bottomAnchor)
+    {
+        if (coiledSpring == null) return;
+
+        if (!showCoiledSpring)
+        {
+            if (coiledSpring.enabled) coiledSpring.enabled = false;
+            return;
+        }
+
+        Vector3 dir = bottomAnchor - topAnchor;
+        float dist = dir.magnitude;
+
+        if (dist < 0.05f)
+        {
+            if (coiledSpring.enabled) coiledSpring.enabled = false;
+            return;
+        }
+
+        if (!coiledSpring.enabled) coiledSpring.enabled = true;
+
+        Vector3 forward = dir.normalized;
+        Vector3 right = Vector3.Cross(forward, Vector3.forward);
+        if (right.sqrMagnitude < 0.001f)
+        {
+            right = Vector3.Cross(forward, Vector3.right);
+        }
+        right.Normalize();
+        Vector3 upVector = Vector3.Cross(right, forward).normalized;
+
+        int pointsPerTurn = 8;
+        int totalPoints = Mathf.Clamp(springTurns * pointsPerTurn + 1, 32, 180);
+
+        if (springPointsBuffer == null || springPointsBuffer.Length != totalPoints)
+        {
+            springPointsBuffer = new Vector3[totalPoints];
+            coiledSpring.positionCount = totalPoints;
+        }
+
+        coiledSpring.startWidth = springWidth;
+        coiledSpring.endWidth = springWidth;
+
+        if (coiledSpring.material != null && coiledSpring.material.color != springColor)
+        {
+            coiledSpring.material.color = springColor;
+        }
+
+        for (int i = 0; i < totalPoints; i++)
+        {
+            float t = (float)i / (totalPoints - 1);
+            Vector3 basePos = Vector3.Lerp(topAnchor, bottomAnchor, t);
+
+            // Afunilamento suave nas conexões do topo (trolley) e base (olhal da garra)
+            float taper = Mathf.Clamp01(Mathf.Sin(t * Mathf.PI) * 2.2f);
+
+            float angleRad = (t * springTurns * 360f) * Mathf.Deg2Rad;
+            Vector3 radialOffset = (right * Mathf.Cos(angleRad) + upVector * Mathf.Sin(angleRad)) * (springRadius * taper);
+
+            springPointsBuffer[i] = basePos + radialOffset;
+        }
+
+        coiledSpring.SetPositions(springPointsBuffer);
     }
 
     public void ResetarGarra()

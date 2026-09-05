@@ -5925,6 +5925,15 @@ MonoBehaviour:
   swaySpring: 28
   swayDamping: 4.2
   swayMaxAngle: 20
+  LIM_X: 1.82
+  LIM_Z: 1.8
+  LIM_YMAX: 1.65
+  LIM_YMIN: -0.95
+  showCoiledSpring: 1
+  springColor: {r: 0.16, g: 0.17, b: 0.2, a: 1}
+  springRadius: 0.052
+  springTurns: 15
+  springWidth: 0.016
 --- !u!54 &741055319
 Rigidbody:
   m_ObjectHideFlags: 0

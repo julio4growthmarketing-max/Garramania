@@ -131,6 +131,7 @@ public sealed class PrizePileSpawner : MonoBehaviour
     private string GetBasePrefabName(string variantId)
     {
         string lower = variantId.ToLowerInvariant();
+        if (lower.Contains("teddy")) return "Teddy";
         if (lower.Contains("fox")) return "Fox";
         if (lower.Contains("bear")) return "GreenBear";
         if (lower.Contains("fish")) return "BalloonFish";
@@ -145,6 +146,7 @@ public sealed class PrizePileSpawner : MonoBehaviour
         var item = CollectionManager.Instance != null ? CollectionManager.Instance.GetItem(variantId) : null;
         if (item != null) return item.rarity;
         string lower = variantId.ToLowerInvariant();
+        if (lower.Contains("teddy")) return PrizeRarity.Rare;
         if (lower.Contains("galaxy") || lower.Contains("king") || lower.Contains("diamond")) return PrizeRarity.Legendary;
         if (lower.Contains("shadow") || lower.Contains("gold") || lower.Contains("honey") || lower.Contains("rare")) return PrizeRarity.Rare;
         if (lower.Contains("arctic") || lower.Contains("polar") || lower.Contains("panda") || lower.Contains("eucalyptus")) return PrizeRarity.Uncommon;
@@ -234,10 +236,30 @@ public sealed class PrizePileSpawner : MonoBehaviour
         // 3. Normaliza a escala visual para ~1.0m
         ScaleVisualUniformly(wrapper.transform, visualRoot.transform);
 
+        // Aplica a textura com cores e laço de fita para o Teddy
+        bool isTeddy = string.Equals(definition.resourceName, "Teddy", StringComparison.OrdinalIgnoreCase);
+        if (isTeddy)
+        {
+            Texture2D tex = Resources.Load<Texture2D>("Prizes/Teddy_Texture") 
+                         ?? Resources.Load<Texture2D>("Prizes/Textures/Teddy_Texture");
+            if (tex != null)
+            {
+                Material teddyMat = new Material(Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard"));
+                teddyMat.mainTexture = tex;
+                if (teddyMat.HasProperty("_BaseMap")) teddyMat.SetTexture("_BaseMap", tex);
+                teddyMat.SetFloat("_Smoothness", 0.25f);
+
+                foreach (var r in visualRoot.GetComponentsInChildren<Renderer>(true))
+                {
+                    r.sharedMaterial = teddyMat;
+                }
+            }
+        }
+
         // 4. Configura Rigidbody no wrapper
         Rigidbody body = wrapper.GetComponent<Rigidbody>();
         if (body == null) body = wrapper.AddComponent<Rigidbody>();
-        body.mass = rarity == PrizeRarity.Legendary ? 1.55f : rarity == PrizeRarity.Rare ? 1.40f : rarity == PrizeRarity.Uncommon ? 1.15f : 0.95f;
+        body.mass = isTeddy ? 0.85f : (rarity == PrizeRarity.Legendary ? 1.55f : rarity == PrizeRarity.Rare ? 1.40f : rarity == PrizeRarity.Uncommon ? 1.15f : 0.95f);
         body.linearDamping = 1.25f;
         body.angularDamping = 0.65f;
         body.collisionDetectionMode = CollisionDetectionMode.Continuous;
@@ -249,8 +271,16 @@ public sealed class PrizePileSpawner : MonoBehaviour
 
         // 5. Adiciona BoxCollider proporcional e sem folga no wrapper
         BoxCollider box = wrapper.AddComponent<BoxCollider>();
-        box.size = new Vector3(0.56f, 0.72f, 0.56f);
-        box.center = new Vector3(0f, 0.36f, 0f);
+        if (isTeddy)
+        {
+            box.size = new Vector3(0.66f, 0.88f, 0.66f);
+            box.center = new Vector3(0f, 0.44f, 0f);
+        }
+        else
+        {
+            box.size = new Vector3(0.56f, 0.72f, 0.56f);
+            box.center = new Vector3(0f, 0.36f, 0f);
+        }
         box.sharedMaterial = Prize.GetPlushiePhysicsMaterial();
 
         // 6. Conecta o componente Prize de gameplay

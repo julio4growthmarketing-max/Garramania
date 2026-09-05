@@ -44,7 +44,7 @@ public sealed class PrizeStockManager : MonoBehaviour
     private const string PityKey = "GarraMania.Stock.RarePityMisses";
     private const string LastRefillKey = "GarraMania.Stock.LastRefillUtc";
     private const string StockVersionKey = "GarraMania.Stock.Version";
-    private const int CurrentStockVersion = 3;
+    private const int CurrentStockVersion = 4;
 
     private static PrizeStockManager _instance;
     public static PrizeStockManager Instance
@@ -379,12 +379,14 @@ public sealed class PrizeStockManager : MonoBehaviour
         {
             entries = new List<PrizeStockEntry>
             {
+                // Teddy especial do Trellis (com laço de fita rosa)!
+                new PrizeStockEntry { resourceName = "Teddy", rarity = PrizeRarity.Rare, reserveCapacity = 25, initialVisibleCount = 4, spawnWeight = 40f, baseCaptureChance = 0.70f },
                 // 100 comuns: 40 + 35 + 25. No tabuleiro inicial: 9 + 8 + 7 = 24.
-                new PrizeStockEntry { resourceName = "Fox", rarity = PrizeRarity.Common, reserveCapacity = 40, initialVisibleCount = 9, spawnWeight = 100f, baseCaptureChance = 0.94f },
-                new PrizeStockEntry { resourceName = "GreenBear", rarity = PrizeRarity.Common, reserveCapacity = 35, initialVisibleCount = 8, spawnWeight = 100f, baseCaptureChance = 0.94f },
-                new PrizeStockEntry { resourceName = "BalloonFish", rarity = PrizeRarity.Common, reserveCapacity = 25, initialVisibleCount = 7, spawnWeight = 100f, baseCaptureChance = 0.94f },
+                new PrizeStockEntry { resourceName = "Fox", rarity = PrizeRarity.Common, reserveCapacity = 40, initialVisibleCount = 8, spawnWeight = 100f, baseCaptureChance = 0.94f },
+                new PrizeStockEntry { resourceName = "GreenBear", rarity = PrizeRarity.Common, reserveCapacity = 35, initialVisibleCount = 7, spawnWeight = 100f, baseCaptureChance = 0.94f },
+                new PrizeStockEntry { resourceName = "BalloonFish", rarity = PrizeRarity.Common, reserveCapacity = 25, initialVisibleCount = 6, spawnWeight = 100f, baseCaptureChance = 0.94f },
                 // 50 incomuns: 30 + 20. No tabuleiro inicial: 5 + 4 = 9.
-                new PrizeStockEntry { resourceName = "Koala", rarity = PrizeRarity.Uncommon, reserveCapacity = 30, initialVisibleCount = 5, spawnWeight = 38f, baseCaptureChance = 0.78f },
+                new PrizeStockEntry { resourceName = "Koala", rarity = PrizeRarity.Uncommon, reserveCapacity = 30, initialVisibleCount = 4, spawnWeight = 38f, baseCaptureChance = 0.78f },
                 new PrizeStockEntry { resourceName = "Badger", rarity = PrizeRarity.Uncommon, reserveCapacity = 20, initialVisibleCount = 4, spawnWeight = 38f, baseCaptureChance = 0.78f },
                 // 10 raros. No tabuleiro inicial: 3.
                 new PrizeStockEntry { resourceName = "Porky", rarity = PrizeRarity.Rare, reserveCapacity = 10, initialVisibleCount = 3, spawnWeight = 8f, baseCaptureChance = 0.34f }

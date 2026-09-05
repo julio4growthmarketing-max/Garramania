@@ -1,0 +1,2 @@
+Coloque aqui seus modelos 3D (.blend ou .fbx) exportados do Blender.
+Consulte o guia BLENDER_GUIDE.md na pasta anterior para dicas de escala e materiais!
