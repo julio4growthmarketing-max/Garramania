@@ -123,3 +123,5 @@ TempScreenshots/
 tools/**/.venv/
 tools/**/__pycache__/
 tools/**/previews/
+tools/**/hf_token.txt
+tools/**/.env

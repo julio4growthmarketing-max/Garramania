@@ -24,7 +24,12 @@ from config import (
     PROJECT_ROOT
 )
 from unity_bridge import UnityBridge
-from trellis_service import generate_3d_from_image
+from trellis_service import (
+    generate_3d_from_image,
+    validate_and_save_hf_token,
+    get_saved_hf_token,
+    get_token_status_display
+)
 
 def run_trellis_generation(image_file, hf_token):
     logs = []
@@ -46,7 +51,7 @@ def run_trellis_generation(image_file, hf_token):
         err_msg = str(e)
         log(f"❌ Erro ao conectar com Trellis: {err_msg}")
         if "ZeroGPU quota" in err_msg or "quota" in err_msg.lower():
-            err_msg += "\n\n💡 Dica: Crie um token gratuito no Hugging Face (https://huggingface.co/settings/tokens) e cole no campo 'Token do Hugging Face' para ter quota ilimitada!"
+            err_msg += "\n\n💡 Dica: Crie um token gratuito no Hugging Face (https://huggingface.co/settings/tokens) e cole no campo 'Token do Hugging Face' acima para liberar sua cota ZeroGPU!"
         return None, None, f"Falha no Trellis: {err_msg}", "\n".join(logs)
 
 def process_and_inject_plushie(
@@ -218,6 +223,8 @@ def full_auto_pipeline_from_image(
 def build_gradio_ui():
     import gradio as gr
 
+    saved_token, initial_status = get_token_status_display()
+
     with gr.Blocks(title="GarraMania 3D Plushie Studio") as demo:
         gr.Markdown(
             """
@@ -235,12 +242,29 @@ def build_gradio_ui():
                     with gr.TabItem("📸 1. Criar via Trellis AI (Foto ➔ 3D)"):
                         gr.Markdown("Envie uma foto ou ilustração de pelúcia para gerar o modelo 3D automaticamente via IA:")
                         img_input = gr.Image(label="Foto / Imagem do Bichinho", type="filepath")
-                        with gr.Accordion("🔑 Hugging Face Token (Opcional para Quota Ilimitada)", open=False):
-                            hf_token_input = gr.Textbox(
-                                label="Hugging Face User Access Token",
-                                placeholder="hf_... (obtenha gratuitamente em huggingface.co/settings/tokens)",
-                                type="password"
+
+                        with gr.Accordion("🔑 Autenticação Hugging Face (Cota ZeroGPU Ilimitada)", open=True):
+                            token_status_md = gr.Markdown(initial_status)
+                            with gr.Row():
+                                hf_token_input = gr.Textbox(
+                                    label="Hugging Face Access Token",
+                                    placeholder="Cole aqui seu token hf_... (huggingface.co/settings/tokens)",
+                                    value=saved_token,
+                                    type="password",
+                                    scale=3
+                                )
+                                btn_save_token = gr.Button("💾 Salvar Token", variant="primary", scale=1)
+
+                            gr.Markdown(
+                                """
+                                ℹ️ **Como gerar seu token gratuito em 1 minuto:**
+                                1. Acesse [huggingface.co/settings/tokens](https://huggingface.co/settings/tokens)
+                                2. Clique em **"Create new token"**
+                                3. Tipo: **"Read"** | Nome: `garramania`
+                                4. Copie o token (`hf_...`), cole no campo acima e clique em **Salvar Token**!
+                                """
                             )
+
                         btn_trellis_only = gr.Button("🧠 Gerar Modelo 3D com Trellis AI", variant="secondary")
 
                     with gr.TabItem("📁 2. Ou Enviar Modelo 3D Pronto (.glb / .obj)"):
@@ -287,7 +311,22 @@ def build_gradio_ui():
             with gr.Column(scale=1):
                 logs_output = gr.TextArea(label="Terminal de Logs em Tempo Real", lines=10, interactive=False)
 
-        # Eventos
+        # Eventos do Token
+        def on_save_token(tok):
+            if not tok or not tok.strip():
+                return "⚪ Nenhum token informado."
+            ok, user_or_err = validate_and_save_hf_token(tok.strip())
+            if ok:
+                return f"🟢 **Hugging Face Conectado!** Usuário: **@{user_or_err}** (Sua cota ZeroGPU pessoal está ativa e pronta)."
+            else:
+                return f"🔴 **Erro na validação:** {user_or_err}"
+
+        btn_save_token.click(
+            fn=on_save_token,
+            inputs=[hf_token_input],
+            outputs=[token_status_md]
+        )
+
         manual_3d_input.change(
             fn=lambda f: (f.name if f else None, f.name if f else None),
             inputs=[manual_3d_input],

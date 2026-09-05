@@ -5,11 +5,82 @@ from pathlib import Path
 from PIL import Image
 from gradio_client import Client, handle_file
 
-# Espaços disponíveis do Trellis no Hugging Face (TRELLIS.2 é o mais recente e estável)
+# Espaços disponíveis do Trellis no Hugging Face (TRELLIS.2 é o oficial mais recente e com melhor qualidade)
 TRELLIS_SPACES = [
     "microsoft/TRELLIS.2",
-    "trellis-community/TRELLIS"
+    "trellis-community/TRELLIS",
+    "microsoft/TRELLIS"
 ]
+
+TOKEN_FILE = Path(__file__).resolve().parent / "hf_token.txt"
+
+def get_saved_hf_token() -> str:
+    """Recupera o token do Hugging Face salvo em arquivo, ambiente ou cache local."""
+    if TOKEN_FILE.exists():
+        try:
+            tok = TOKEN_FILE.read_text(encoding="utf-8").strip()
+            if tok:
+                return tok
+        except Exception:
+            pass
+
+    env_tok = os.environ.get("HF_TOKEN") or os.environ.get("HUGGING_FACE_HUB_TOKEN")
+    if env_tok and env_tok.strip():
+        return env_tok.strip()
+
+    try:
+        from huggingface_hub import get_token
+        cached = get_token()
+        if cached and cached.strip():
+            return cached.strip()
+    except Exception:
+        pass
+
+    return ""
+
+def validate_and_save_hf_token(token_str: str) -> tuple[bool, str]:
+    """
+    Testa a autenticidade do token no Hugging Face.
+    Se for válido, salva no arquivo hf_token.txt e configura o login local.
+    """
+    token_clean = token_str.strip() if token_str else ""
+    if not token_clean:
+        return False, "Nenhum token fornecido."
+
+    try:
+        import huggingface_hub
+        api = huggingface_hub.HfApi()
+        user_info = api.whoami(token=token_clean)
+        username = user_info.get("name") or user_info.get("fullname") or "Usuário Hugging Face"
+
+        # Salva no arquivo local para persistência permanente
+        TOKEN_FILE.write_text(token_clean, encoding="utf-8")
+
+        # Configura no ambiente e cache
+        try:
+            huggingface_hub.login(token=token_clean, add_to_git_credential=False)
+        except Exception:
+            pass
+
+        os.environ["HF_TOKEN"] = token_clean
+        return True, username
+    except Exception as e:
+        err_msg = str(e)
+        if "401" in err_msg or "Invalid" in err_msg or "Unauthorized" in err_msg:
+            return False, "Token inválido. Verifique se copiou o token completo iniciando com 'hf_'."
+        return False, f"Erro ao verificar token: {err_msg}"
+
+def get_token_status_display() -> tuple[str, str]:
+    """Retorna (token_atual, mensagem_status_markdown) para a interface."""
+    saved_tok = get_saved_hf_token()
+    if not saved_tok:
+        return "", "⚪ **Nenhum token salvo.** (Cota ZeroGPU anônima é 0s. Gere um token gratuito no Hugging Face abaixo para liberar sua cota pessoal)."
+
+    is_valid, user_or_err = validate_and_save_hf_token(saved_tok)
+    if is_valid:
+        return saved_tok, f"🟢 **Hugging Face Conectado!** Usuário: **@{user_or_err}** (Sua cota ZeroGPU pessoal está ativa e pronta)."
+    else:
+        return saved_tok, f"🔴 **Token expirado ou inválido:** {user_or_err}"
 
 def prepare_image_as_png(image_path: str) -> str:
     """Converte qualquer formato (webp, jfif, etc.) para PNG limpo com transparência preservada"""
@@ -17,7 +88,7 @@ def prepare_image_as_png(image_path: str) -> str:
         im = Image.open(image_path)
         if im.mode != "RGBA":
             im = im.convert("RGBA")
-        
+
         tmp_dir = Path(tempfile.gettempdir()) / "garramania_trellis"
         tmp_dir.mkdir(parents=True, exist_ok=True)
         target_png = tmp_dir / "input_clean.png"
@@ -40,22 +111,36 @@ def generate_3d_from_image(image_path: str, hf_token: str = None, progress_callb
     clean_image_path = prepare_image_as_png(image_path)
     log(f"Imagem preparada para Trellis: {Path(clean_image_path).name}")
 
-    tok = hf_token.strip() if (hf_token and hf_token.strip()) else None
+    # Determina o token ativo
+    tok = (hf_token.strip() if (hf_token and hf_token.strip()) else "") or get_saved_hf_token()
     if tok:
-        log("🔑 Utilizando Hugging Face Access Token fornecido!")
+        # Tenta salvar se for um novo token válido
+        ok, user_res = validate_and_save_hf_token(tok)
+        if ok:
+            log(f"🔑 Hugging Face autenticado como @{user_res} (Cota pessoal ZeroGPU ativa)!")
+        else:
+            log("🔑 Utilizando token do Hugging Face fornecido.")
+        os.environ["HF_TOKEN"] = tok
     else:
-        log("ℹ️ Conectando com cota pública padrão...")
+        log("⚠️ Conectando sem token (Cota pública anônima - pode ter limite excedido).")
 
+    active_token = tok if tok else None
     last_err = None
+
     for space_id in TRELLIS_SPACES:
         try:
             log(f"Conectando ao endpoint {space_id}...")
-            client = Client(space_id, token=tok)
+            client = Client(space_id, token=active_token)
+
+            # Inicia sessão no endpoint
+            try:
+                client.predict(api_name="/start_session")
+            except Exception:
+                pass
 
             log("1/3 Pré-processando imagem (remoção de fundo e enquadramento)...")
             preprocessed_file = None
             try:
-                # Tenta chamar preprocess_image
                 if "TRELLIS.2" in space_id:
                     preprocessed_file = client.predict(
                         input=handle_file(clean_image_path),
@@ -75,13 +160,13 @@ def generate_3d_from_image(image_path: str, hf_token: str = None, progress_callb
                 preprocessed_file = clean_image_path
 
             log("2/3 Gerando malha e volumetria 3D no Trellis (ZeroGPU)...")
-            
+
             if "TRELLIS.2" in space_id:
                 # microsoft/TRELLIS.2
                 client.predict(
                     image=handle_file(str(preprocessed_file)),
                     seed=0,
-                    resolution='1024', # Deve ser string '1024', não int!
+                    resolution='1024',
                     ss_guidance_strength=7.5,
                     ss_guidance_rescale=0.7,
                     ss_sampling_steps=12,
@@ -106,7 +191,7 @@ def generate_3d_from_image(image_path: str, hf_token: str = None, progress_callb
                 if isinstance(glb_file, (list, tuple)):
                     glb_file = glb_file[0]
             else:
-                # trellis-community/TRELLIS
+                # trellis-community/TRELLIS ou microsoft/TRELLIS
                 res = client.predict(
                     image=handle_file(str(preprocessed_file)),
                     multiimages=[],
