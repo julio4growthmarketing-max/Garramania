@@ -131,6 +131,7 @@ public sealed class PrizePileSpawner : MonoBehaviour
     private string GetBasePrefabName(string variantId)
     {
         string lower = variantId.ToLowerInvariant();
+        if (lower.Contains("stitch")) return "Stitch";
         if (lower.Contains("teddy_marron")) return "Teddy_Marron";
         if (lower.Contains("teddy")) return "Teddy";
         if (lower.Contains("fox")) return "Fox";
@@ -147,6 +148,7 @@ public sealed class PrizePileSpawner : MonoBehaviour
         var item = CollectionManager.Instance != null ? CollectionManager.Instance.GetItem(variantId) : null;
         if (item != null) return item.rarity;
         string lower = variantId.ToLowerInvariant();
+        if (lower.Contains("stitch")) return PrizeRarity.Legendary;
         if (lower.Contains("teddy_marron")) return PrizeRarity.Legendary;
         if (lower.Contains("teddy")) return PrizeRarity.Rare;
         if (lower.Contains("galaxy") || lower.Contains("king") || lower.Contains("diamond")) return PrizeRarity.Legendary;

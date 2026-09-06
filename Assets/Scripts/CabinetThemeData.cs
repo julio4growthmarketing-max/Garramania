@@ -53,7 +53,7 @@ public class CabinetThemeData
             spotlightColor = new Color(0.90f, 0.95f, 1.00f),     // Luz branca pura
             marqueeTitle = "GARRAMANIA NEON",
             wallpaperResourcePath = "Textures/Wallpaper_CyberNeon",
-            exclusivePrizeIds = new List<string> { "Teddy", "Fox", "GreenBear", "BalloonFish", "Koala", "Badger", "Porky" }
+            exclusivePrizeIds = new List<string> { "Stitch", "Teddy", "Fox", "GreenBear", "BalloonFish", "Koala", "Badger", "Porky" }
         };
     }
 

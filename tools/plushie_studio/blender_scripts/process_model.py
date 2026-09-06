@@ -107,25 +107,100 @@ def main():
         bpy.ops.object.modifier_apply(modifier="Decimate_Auto")
         print(f"Polígonos pós-decimate: {len(main_obj.data.polygons)}")
 
-    # 4. Extração / Salvamento de Textura se solicitada
-    if args.output_tex:
-        os.makedirs(os.path.dirname(os.path.abspath(args.output_tex)), exist_ok=True)
-        # Procura imagem existente nos materiais
-        found_image = None
-        for mat_slot in main_obj.material_slots:
-            if mat_slot.material and mat_slot.material.use_nodes:
-                for node in mat_slot.material.node_tree.nodes:
-                    if node.type == 'TEX_IMAGE' and node.image:
-                        found_image = node.image
-                        break
-            if found_image:
-                break
+    # 4. Processamento de Texturas e Cores (Bake automático de Vertex Color para PNG / UVs)
+    has_image = False
+    found_image = None
+    for mat_slot in main_obj.material_slots:
+        if mat_slot.material and mat_slot.material.use_nodes:
+            for node in mat_slot.material.node_tree.nodes:
+                if node.type == 'TEX_IMAGE' and node.image:
+                    found_image = node.image
+                    has_image = True
+                    break
+        if has_image:
+            break
 
-        if found_image:
-            found_image.filepath_raw = args.output_tex
-            found_image.file_format = 'PNG'
-            found_image.save()
-            print(f"Textura salva com sucesso em: {args.output_tex}")
+    has_vertex_colors = len(main_obj.data.color_attributes) > 0
+    print(f"Diagnóstico de Materiais: Tem Imagem={has_image}, Tem Cores por Vértice={has_vertex_colors}")
+
+    if has_vertex_colors and not has_image:
+        print("Modelagem com Cores por Vértice detectada (TripoSR). Gerando UVs e assando textura PNG (Cycles Bake)...")
+        # 1. Garante seleção isolada do mesh
+        bpy.ops.object.select_all(action='DESELECT')
+        main_obj.select_set(True)
+        bpy.context.view_layer.objects.active = main_obj
+
+        # 2. Desembrulha mapa UV se necessário
+        if not main_obj.data.uv_layers:
+            bpy.ops.object.mode_set(mode='EDIT')
+            bpy.ops.mesh.select_all(action='SELECT')
+            bpy.ops.uv.smart_project(angle_limit=66.0, margin_method='SCALED', island_margin=0.01)
+            bpy.ops.object.mode_set(mode='OBJECT')
+            print("Mapa UV gerado com sucesso!")
+
+        # 3. Cria imagem de textura para o bake
+        tex_image = bpy.data.images.new(name=f"{args.model_name}_Texture", width=1024, height=1024, alpha=False)
+
+        # 4. Configura nós de emissão para o bake
+        if not main_obj.material_slots or not main_obj.material_slots[0].material:
+            mat = bpy.data.materials.new(name=f"Mat_{args.model_name}")
+            main_obj.data.materials.append(mat)
+        else:
+            mat = main_obj.material_slots[0].material
+
+        mat.use_nodes = True
+        nodes = mat.node_tree.nodes
+        nodes.clear()
+
+        color_attr_name = main_obj.data.color_attributes[0].name
+        vcol_node = nodes.new('ShaderNodeVertexColor')
+        vcol_node.layer_name = color_attr_name
+
+        emit_node = nodes.new('ShaderNodeEmission')
+        out_node = nodes.new('ShaderNodeOutputMaterial')
+        tex_node = nodes.new('ShaderNodeTexImage')
+        tex_node.image = tex_image
+        nodes.active = tex_node
+
+        mat.node_tree.links.new(vcol_node.outputs['Color'], emit_node.inputs['Color'])
+        mat.node_tree.links.new(emit_node.outputs['Emission'], out_node.inputs['Surface'])
+
+        # 5. Executa bake de emissão no Cycles
+        bpy.context.scene.render.engine = 'CYCLES'
+        bpy.context.scene.cycles.device = 'CPU'
+        bpy.context.scene.cycles.samples = 1
+        bpy.context.scene.cycles.bake_type = 'EMIT'
+        try:
+            bpy.ops.object.bake(type='EMIT')
+            print("Bake de textura concluído com sucesso!")
+        except Exception as e_bake:
+            print(f"Aviso no bake: {e_bake}")
+
+        # 6. Salva textura PNG
+        if args.output_tex:
+            os.makedirs(os.path.dirname(os.path.abspath(args.output_tex)), exist_ok=True)
+            tex_image.filepath_raw = args.output_tex
+            tex_image.file_format = 'PNG'
+            tex_image.save()
+            print(f"Textura assada e salva em: {args.output_tex}")
+
+        # 7. Reconecta material final com Principled BSDF e textura de imagem
+        nodes.clear()
+        principled = nodes.new('ShaderNodeBsdfPrincipled')
+        principled.inputs['Roughness'].default_value = 0.75
+        principled.inputs['Specular IOR Level'].default_value = 0.1
+        tex_final = nodes.new('ShaderNodeTexImage')
+        tex_final.image = tex_image
+        out_final = nodes.new('ShaderNodeOutputMaterial')
+        mat.node_tree.links.new(tex_final.outputs['Color'], principled.inputs['Base Color'])
+        mat.node_tree.links.new(principled.outputs['BSDF'], out_final.inputs['Surface'])
+
+    elif found_image and args.output_tex:
+        os.makedirs(os.path.dirname(os.path.abspath(args.output_tex)), exist_ok=True)
+        found_image.filepath_raw = args.output_tex
+        found_image.file_format = 'PNG'
+        found_image.save()
+        print(f"Textura existente salva em: {args.output_tex}")
 
     # 5. Salva arquivo .blend se especificado
     if args.output_blend:

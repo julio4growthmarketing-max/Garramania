@@ -31,28 +31,45 @@ from trellis_service import (
     get_token_status_display
 )
 
-def run_trellis_generation(image_file, hf_token):
+def safe_print(msg: str):
+    try:
+        print(msg)
+    except Exception:
+        try:
+            print(str(msg).encode("ascii", errors="replace").decode("ascii"))
+        except Exception:
+            pass
+
+def map_engine_choice(choice_str: str) -> str:
+    if not choice_str:
+        return "auto"
+    if "TripoSR" in choice_str:
+        return "triposr"
+    elif "Trellis" in choice_str and "Auto" not in choice_str:
+        return "trellis"
+    return "auto"
+
+def run_ai_generation(image_file, hf_token, engine_choice="🤖 Automático Inteligente (Trellis ➔ Fallback TripoSR)"):
     logs = []
     def log(msg):
         logs.append(msg)
-        print(f"[PlushieStudio-Trellis] {msg}")
+        safe_print(f"[PlushieStudio-AI] {msg}")
 
     if not image_file:
         return None, None, "⚠️ Por favor envie uma imagem (foto ou arte 2D) primeiro.", "\n".join(logs)
 
     img_path = image_file.name if hasattr(image_file, 'name') else str(image_file)
-    log(f"Iniciando Trellis AI para imagem: {img_path}")
+    engine_key = map_engine_choice(engine_choice)
+    log(f"Iniciando IA ({engine_choice}) para imagem: {Path(img_path).name}")
 
     try:
-        glb_path = generate_3d_from_image(img_path, hf_token=hf_token, progress_callback=log)
-        log("🎉 Modelo 3D gerado com sucesso pelo Trellis!")
-        return glb_path, glb_path, "✅ Trellis gerou o modelo 3D com sucesso! Você pode inspecioná-lo no visualizador 360° ao lado.", "\n".join(logs)
+        glb_path = generate_3d_from_image(img_path, hf_token=hf_token, engine=engine_key, progress_callback=log)
+        log("🎉 Modelo 3D gerado com sucesso!")
+        return glb_path, glb_path, "✅ IA gerou o modelo 3D com sucesso! Você pode inspecioná-lo no visualizador 360° ao lado.", "\n".join(logs)
     except Exception as e:
         err_msg = str(e)
-        log(f"❌ Erro ao conectar com Trellis: {err_msg}")
-        if "ZeroGPU quota" in err_msg or "quota" in err_msg.lower():
-            err_msg += "\n\n💡 Dica: Crie um token gratuito no Hugging Face (https://huggingface.co/settings/tokens) e cole no campo 'Token do Hugging Face' acima para liberar sua cota ZeroGPU!"
-        return None, None, f"Falha no Trellis: {err_msg}", "\n".join(logs)
+        log(f"❌ Erro na geração 3D: {err_msg}")
+        return None, None, f"Falha na IA: {err_msg}", "\n".join(logs)
 
 def process_and_inject_plushie(
     model_file,
@@ -71,7 +88,7 @@ def process_and_inject_plushie(
     logs = []
     def log(msg):
         logs.append(msg)
-        print(f"[PlushieStudio] {msg}")
+        safe_print(f"[PlushieStudio] {msg}")
 
     if not model_file:
         return "⚠️ Nenhum modelo 3D disponível. Envie um arquivo .glb ou gere um a partir de uma foto com o Trellis.", None, "\n".join(logs)
@@ -123,6 +140,10 @@ def process_and_inject_plushie(
         else:
             log("✅ Modelo 3D ripado e processado com sucesso pelo Blender!")
             log(f"   -> FBX salvo em: {fbx_out.relative_to(PROJECT_ROOT)}")
+            if preview_out.exists():
+                preview_unity = output_dir / f"{prize_id}_preview.png"
+                shutil.copy2(preview_out, preview_unity)
+                log(f"   -> Retrato 3D salvo em: {preview_unity.relative_to(PROJECT_ROOT)}")
     except Exception as e:
         log(f"❌ Exceção ao rodar Blender: {e}")
         return f"Erro: {e}", None, "\n".join(logs)
@@ -177,6 +198,7 @@ def process_and_inject_plushie(
 def full_auto_pipeline_from_image(
     image_file,
     hf_token: str,
+    engine_choice: str,
     prize_id: str,
     display_name: str,
     rarity: str,
@@ -189,14 +211,14 @@ def full_auto_pipeline_from_image(
     capture_chance_pct: float,
     grip_required: float
 ):
-    """Executa o pipeline completo: Imagem ➔ Trellis 3D ➔ Blender Ripagem ➔ Unity Prefab em 1 clique"""
+    """Executa o pipeline completo: Imagem ➔ IA 3D ➔ Blender Ripagem ➔ Unity Prefab em 1 clique"""
     if not image_file:
         return None, "⚠️ Envie uma imagem primeiro para rodar o pipeline completo.", None, "Nenhuma imagem selecionada."
 
-    # 1. Gera o 3D com Trellis
-    glb_path, _, status_trellis, logs_trellis = run_trellis_generation(image_file, hf_token)
+    # 1. Gera o 3D com o motor selecionado (com fallback inteligente se falhar)
+    glb_path, _, status_ai, logs_ai = run_ai_generation(image_file, hf_token, engine_choice)
     if not glb_path:
-        return None, status_trellis, None, logs_trellis
+        return None, status_ai, None, logs_ai
 
     # 2. Ripa no Blender e Injeta na Unity
     status_unity, preview_img, logs_unity = process_and_inject_plushie(
@@ -214,7 +236,7 @@ def full_auto_pipeline_from_image(
         grip_required=grip_required
     )
 
-    full_logs = f"{logs_trellis}\n\n{logs_unity}"
+    full_logs = f"{logs_ai}\n\n{logs_unity}"
     return glb_path, status_unity, preview_img, full_logs
 
 def build_gradio_ui():
@@ -225,7 +247,7 @@ def build_gradio_ui():
     with gr.Blocks(title="GarraMania 3D Plushie Studio") as demo:
         gr.Markdown(
             """
-            # 🧸 GarraMania 3D Plushie Studio & Trellis AI Pipeline
+            # 🧸 GarraMania 3D Plushie Studio & Multi-AI Pipeline
             ### Suba uma imagem 2D ou modelo 3D para gerar, ripar e colocar novos bichinhos jogáveis dentro da máquina de garra arcade!
             """
         )
@@ -233,14 +255,25 @@ def build_gradio_ui():
         current_3d_file = gr.State(None)
 
         with gr.Row():
-            # Coluna Esquerda: Entrada (Imagem com Trellis OU Arquivo 3D)
+            # Coluna Esquerda: Entrada (Imagem com IA OU Arquivo 3D)
             with gr.Column(scale=1):
                 with gr.Tabs():
-                    with gr.TabItem("📸 1. Criar via Trellis AI (Foto ➔ 3D)"):
+                    with gr.TabItem("📸 1. Criar via IA (Foto ➔ 3D)"):
                         gr.Markdown("Envie uma foto ou ilustração de pelúcia para gerar o modelo 3D automaticamente via IA:")
                         img_input = gr.Image(label="Foto / Imagem do Bichinho", type="filepath")
 
-                        with gr.Accordion("🔑 Autenticação Hugging Face (Cota ZeroGPU Ilimitada)", open=True):
+                        engine_dropdown = gr.Dropdown(
+                            label="Motor de IA para Geração 3D",
+                            choices=[
+                                "🤖 Automático Inteligente (Trellis ➔ Fallback TripoSR)",
+                                "⚡ TripoSR (Stability AI - Ultra Rápido / Sem Limite de Cota)",
+                                "🎨 Trellis 2 (Microsoft - Alta Resolução / Requer Cota ZeroGPU)"
+                            ],
+                            value="🤖 Automático Inteligente (Trellis ➔ Fallback TripoSR)",
+                            info="Se o Trellis estiver sem cota ZeroGPU no Hugging Face, o modo Automático usa TripoSR instantaneamente sem travar o seu fluxo."
+                        )
+
+                        with gr.Accordion("🔑 Autenticação Hugging Face (Cota Pessoal)", open=False):
                             token_status_md = gr.Markdown(initial_status)
                             with gr.Row():
                                 hf_token_input = gr.Textbox(
@@ -262,7 +295,7 @@ def build_gradio_ui():
                                 """
                             )
 
-                        btn_trellis_only = gr.Button("🧠 Gerar Modelo 3D com Trellis AI", variant="secondary")
+                        btn_ai_only = gr.Button("🧠 Gerar Modelo 3D com IA", variant="secondary")
 
                     with gr.TabItem("📁 2. Ou Enviar Modelo 3D Pronto (.glb / .obj)"):
                         gr.Markdown("Se já baixou o arquivo 3D de pelúcia (.glb, .gltf ou .obj), envie aqui:")
@@ -298,7 +331,7 @@ def build_gradio_ui():
 
                 gr.Markdown("### 🚀 Ações de Injeção")
                 btn_process_manual = gr.Button("🛠️ Ripar no Blender & Injetar na Unity", variant="secondary", size="lg")
-                btn_full_auto = gr.Button("⚡ Pipeline Automático em 1 Clique (Foto ➔ Trellis ➔ Blender ➔ Unity)", variant="primary", size="lg")
+                btn_full_auto = gr.Button("⚡ Pipeline Automático em 1 Clique (Foto ➔ IA ➔ Blender ➔ Unity)", variant="primary", size="lg")
 
         gr.Markdown("---")
         with gr.Row():
@@ -314,7 +347,7 @@ def build_gradio_ui():
                 return "⚪ Nenhum token informado."
             ok, user_or_err = validate_and_save_hf_token(tok.strip())
             if ok:
-                return f"🟢 **Hugging Face Conectado!** Usuário: **@{user_or_err}** (Sua cota ZeroGPU pessoal está ativa e pronta)."
+                return f"🟢 **Hugging Face Conectado!** Usuário: **@{user_or_err}** (Sua cota pessoal está ativa)."
             else:
                 return f"🔴 **Erro na validação:** {user_or_err}"
 
@@ -330,9 +363,9 @@ def build_gradio_ui():
             outputs=[model_3d_viewer, current_3d_file]
         )
 
-        btn_trellis_only.click(
-            fn=run_trellis_generation,
-            inputs=[img_input, hf_token_input],
+        btn_ai_only.click(
+            fn=run_ai_generation,
+            inputs=[img_input, hf_token_input, engine_dropdown],
             outputs=[model_3d_viewer, current_3d_file, status_output, logs_output]
         )
 
@@ -360,6 +393,7 @@ def build_gradio_ui():
             inputs=[
                 img_input,
                 hf_token_input,
+                engine_dropdown,
                 prize_id_input,
                 display_name_input,
                 rarity_dropdown,

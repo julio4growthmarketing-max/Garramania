@@ -199,17 +199,31 @@ public static class UITheme
     {
         if (string.IsNullOrEmpty(id)) id = "fox";
         string key = id.ToLowerInvariant();
-        if (key.Contains("fox")) key = "fox";
-        else if (key.Contains("green") || key.Contains("bear")) key = "greenbear";
-        else if (key.Contains("fish") || key.Contains("balloon")) key = "balloonfish";
-        else if (key.Contains("koala")) key = "koala";
-        else if (key.Contains("badger")) key = "badger";
-        else if (key.Contains("pork") || key.Contains("pig")) key = "porky";
-        else key = "fox";
 
         if (portraitCache.TryGetValue(key, out Sprite cached) && cached != null) return cached;
 
-        Texture2D tex = Resources.Load<Texture2D>($"Textures/Portraits/portrait_{key}");
+        // 1. Tenta carregar imagem de preview dedicada do prêmio novo (em Resources/Prizes/{id}_preview)
+        Texture2D prizeTex = Resources.Load<Texture2D>($"Prizes/{id}_preview")
+                          ?? Resources.Load<Texture2D>($"Prizes/{key}_preview")
+                          ?? Resources.Load<Texture2D>($"Prizes/{id}")
+                          ?? Resources.Load<Texture2D>($"Prizes/{key}");
+        if (prizeTex != null)
+        {
+            Sprite sp = Sprite.Create(prizeTex, new Rect(0, 0, prizeTex.width, prizeTex.height), new Vector2(0.5f, 0.5f));
+            portraitCache[key] = sp;
+            return sp;
+        }
+
+        // 2. Mapeia para animais clássicos do jogo
+        string baseKey = "fox";
+        if (key.Contains("fox")) baseKey = "fox";
+        else if (key.Contains("green") || key.Contains("bear") || key.Contains("teddy")) baseKey = "greenbear";
+        else if (key.Contains("fish") || key.Contains("balloon")) baseKey = "balloonfish";
+        else if (key.Contains("koala")) baseKey = "koala";
+        else if (key.Contains("badger")) baseKey = "badger";
+        else if (key.Contains("pork") || key.Contains("pig")) baseKey = "porky";
+
+        Texture2D tex = Resources.Load<Texture2D>($"Textures/Portraits/portrait_{baseKey}");
         if (tex != null)
         {
             Sprite sp = Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), new Vector2(0.5f, 0.5f));

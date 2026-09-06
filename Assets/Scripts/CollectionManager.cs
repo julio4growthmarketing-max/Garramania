@@ -58,6 +58,7 @@ public sealed class CollectionManager : MonoBehaviour
     private readonly Dictionary<string, CollectionItem> items = new Dictionary<string, CollectionItem>(StringComparer.OrdinalIgnoreCase);
     private readonly List<string> orderedIds = new List<string> 
     { 
+        "Stitch",
         "Teddy_Marron",
         "Teddy",
         "Fox", "Fox_Arctic", "Fox_Shadow",
@@ -102,7 +103,17 @@ public sealed class CollectionManager : MonoBehaviour
         items.Clear();
 
         
-        // --- GARRAMANIA ---
+        
+        // --- STITCH FOFO ---
+        items["Stitch"] = new CollectionItem
+        {
+            id = "Stitch",
+            displayName = "Stitch Fofo 🧸",
+            rarity = PrizeRarity.Legendary,
+            lore = "Pelucia travessa e intergalatica",
+            themeColor = ColorLegendary
+        };
+// --- GARRAMANIA ---
         items["Teddy_Marron"] = new CollectionItem
         {
             id = "Teddy_Marron",

@@ -339,7 +339,7 @@ public sealed class ProfessionalUIController : MonoBehaviour
 
         if (resultBadgeText != null)
         {
-            resultBadgeText.text = res.item.rarity == PrizeRarity.Rare ? "★★★ RARO ★★★" : res.item.rarity == PrizeRarity.Uncommon ? "★★ INCOMUM ★★" : "★ COMUM ★";
+            resultBadgeText.text = res.item.rarity == PrizeRarity.Legendary ? "★★★★ LENDÁRIO ★★★★" : res.item.rarity == PrizeRarity.Rare ? "★★★ RARO ★★★" : res.item.rarity == PrizeRarity.Uncommon ? "★★ INCOMUM ★★" : "★ COMUM ★";
             resultBadgeText.color = res.item.themeColor;
         }
 
@@ -1036,7 +1036,7 @@ public sealed class ProfessionalUIController : MonoBehaviour
                 inspectPortraitImage.color = Color.white;
             }
             inspectNameText.text = item.displayName.ToUpperInvariant();
-            inspectRarityText.text = item.rarity == PrizeRarity.Rare ? "★★★ RARIDADE: RARO ★★★" : item.rarity == PrizeRarity.Uncommon ? "★★ RARIDADE: INCOMUM ★★" : "★ RARIDADE: COMUM ★";
+            inspectRarityText.text = item.rarity == PrizeRarity.Legendary ? "★★★★ RARIDADE: LENDÁRIO ★★★★" : item.rarity == PrizeRarity.Rare ? "★★★ RARIDADE: RARO ★★★" : item.rarity == PrizeRarity.Uncommon ? "★★ RARIDADE: INCOMUM ★★" : "★ RARIDADE: COMUM ★";
             inspectRarityText.color = item.themeColor;
             inspectLoreText.text = item.lore;
             inspectStatsText.text = $"Total Capturado: ×{item.count} | Primeiro em: {item.firstCapturedAt}";

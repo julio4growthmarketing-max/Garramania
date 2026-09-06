@@ -44,7 +44,7 @@ public sealed class PrizeStockManager : MonoBehaviour
     private const string PityKey = "GarraMania.Stock.RarePityMisses";
     private const string LastRefillKey = "GarraMania.Stock.LastRefillUtc";
     private const string StockVersionKey = "GarraMania.Stock.Version";
-    private const int CurrentStockVersion = 5;
+    private const int CurrentStockVersion = 8;
 
     private static PrizeStockManager _instance;
     public static PrizeStockManager Instance
@@ -379,7 +379,8 @@ public sealed class PrizeStockManager : MonoBehaviour
         {
             entries = new List<PrizeStockEntry>
             {
-                                new PrizeStockEntry { resourceName = "Teddy_Marron", rarity = PrizeRarity.Legendary, reserveCapacity = 30, initialVisibleCount = 4, spawnWeight = 10.0f, baseCaptureChance = 0.75f },
+                                                new PrizeStockEntry { resourceName = "Stitch", rarity = PrizeRarity.Legendary, reserveCapacity = 25, initialVisibleCount = 4, spawnWeight = 10.0f, baseCaptureChance = 0.70f },
+new PrizeStockEntry { resourceName = "Teddy_Marron", rarity = PrizeRarity.Legendary, reserveCapacity = 30, initialVisibleCount = 4, spawnWeight = 10.0f, baseCaptureChance = 0.75f },
 // Teddy especial do Trellis (com laço de fita rosa)!
                 new PrizeStockEntry { resourceName = "Teddy", rarity = PrizeRarity.Rare, reserveCapacity = 25, initialVisibleCount = 4, spawnWeight = 40f, baseCaptureChance = 0.70f },
                 // 100 comuns: 40 + 35 + 25. No tabuleiro inicial: 9 + 8 + 7 = 24.

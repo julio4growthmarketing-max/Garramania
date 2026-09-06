@@ -146,6 +146,7 @@ class UnityBridge:
         output_dir = self.prizes_dir
         prefab_out = output_dir / f"{prize_id}.prefab"
         teddy_prefab = output_dir / "Teddy.prefab"
+        teddy_meta = output_dir / "Teddy.fbx.meta"
         fbx_meta = Path(str(fbx_path) + ".meta")
 
         # Garante que o FBX tenha um GUID
@@ -157,7 +158,31 @@ class UnityBridge:
                     break
         if not fbx_guid:
             fbx_guid = uuid.uuid4().hex
+
+        # Configura o ModelImporter completo copiando a estrutura do Teddy.fbx.meta
+        if teddy_meta.exists():
+            meta_template = teddy_meta.read_text(encoding="utf-8")
+            meta_updated = re.sub(r'guid:\s*[a-f0-9]+', f'guid: {fbx_guid}', meta_template, count=1)
+            fbx_meta.write_text(meta_updated, encoding="utf-8")
+        else:
             fbx_meta.write_text(f"fileFormatVersion: 2\nguid: {fbx_guid}\n", encoding="utf-8")
+
+        # Configura meta para a textura PNG
+        tex_file = output_dir / f"{prize_id}_Texture.png"
+        tex_meta = output_dir / f"{prize_id}_Texture.png.meta"
+        teddy_tex_meta = output_dir / "Teddy_Texture.png.meta"
+        if tex_file.exists() and not tex_meta.exists() and teddy_tex_meta.exists():
+            t_meta = teddy_tex_meta.read_text(encoding="utf-8")
+            t_guid = uuid.uuid4().hex
+            tex_meta.write_text(re.sub(r'guid:\s*[a-f0-9]+', f'guid: {t_guid}', t_meta, count=1), encoding="utf-8")
+
+        # Configura meta para o preview PNG
+        prev_file = output_dir / f"{prize_id}_preview.png"
+        prev_meta = output_dir / f"{prize_id}_preview.png.meta"
+        if prev_file.exists() and not prev_meta.exists() and teddy_tex_meta.exists():
+            p_meta = teddy_tex_meta.read_text(encoding="utf-8")
+            p_guid = uuid.uuid4().hex
+            prev_meta.write_text(re.sub(r'guid:\s*[a-f0-9]+', f'guid: {p_guid}', p_meta, count=1), encoding="utf-8")
 
         if teddy_prefab.exists():
             template_text = teddy_prefab.read_text(encoding="utf-8")

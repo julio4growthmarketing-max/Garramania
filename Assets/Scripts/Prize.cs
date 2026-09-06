@@ -142,6 +142,36 @@ public class Prize : MonoBehaviour
             BaseCaptureChance = 0.75f;
         }
 
+        
+        // Calibração especial para Stitch
+        if (StockId != null && StockId.IndexOf("Stitch", System.StringComparison.OrdinalIgnoreCase) >= 0)
+        {
+            gripRequired = 0.20f;
+            massFeel = 0.85f;
+            slipperiness = 0.05f;
+            BaseCaptureChance = 0.70f;
+        }
+
+        
+        // Calibração especial para Stitch
+        if (StockId != null && StockId.IndexOf("Stitch", System.StringComparison.OrdinalIgnoreCase) >= 0)
+        {
+            gripRequired = 0.18f;
+            massFeel = 0.85f;
+            slipperiness = 0.05f;
+            BaseCaptureChance = 0.75f;
+        }
+
+        
+        // Calibração especial para Stitch
+        if (StockId != null && StockId.IndexOf("Stitch", System.StringComparison.OrdinalIgnoreCase) >= 0)
+        {
+            gripRequired = 0.20f;
+            massFeel = 0.85f;
+            slipperiness = 0.05f;
+            BaseCaptureChance = 0.70f;
+        }
+
         if (Body != null) Body.mass = massFeel;
 
         if (Rarity == PrizeRarity.Rare || Rarity == PrizeRarity.Legendary)
